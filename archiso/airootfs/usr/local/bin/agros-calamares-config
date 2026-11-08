@@ -42,6 +42,8 @@ done
 sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i '/^ *name.*:/s/CachyOS/AgrOS/' "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
+# The boot entry the firmware lists (and GRUB's folder on the boot partition, EFI/AgrOS)
+sed -i 's/^efiBootloaderId: .*/efiBootloaderId: "AgrOS"/' "$mods/bootloader.conf" 2>/dev/null || true
 
 # No desktop page: AgrOS is the desktop
 sed -i '/^  - packagechooser@desktop$/d' "$settings"

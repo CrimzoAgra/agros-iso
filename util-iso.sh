@@ -57,11 +57,11 @@ trap_exit() {
 
 generate_motd() {
     cat << 'EOF' > ${src_dir}/archiso/airootfs/etc/motd
-This ISO is based on ArchLinux ISO modified to provide Installation Environment for [38;2;23;147;209mCachyOS[0m.
-https://cachyos.org
+This ISO is based on CachyOS's live ISO, modified to provide the installation environment for [38;2;190;196;238mAgrOS[0m.
+https://github.com/CrimzoAgra/agros
 
-CachyOS Archiso Sources:
-https://github.com/cachyos/cachyos-live-iso
+AgrOS Archiso Sources (a fork of CachyOS's):
+https://github.com/CrimzoAgra/agros-iso
 
 ArchLinux ISO Source:
 https://gitlab.archlinux.org/archlinux/archiso
@@ -69,11 +69,11 @@ https://gitlab.archlinux.org/archlinux/archiso
 Calamares is used as GUI installer:
 https://github.com/calamares/calamares
 
-Live environment will start now and let you install [38;2;23;147;209mCachyOS[0m to disk.
+Live environment will start now and let you install [38;2;190;196;238mAgrOS[0m to disk.
 
-Getting help at the forum: https://discuss.cachyos.org
+Getting help: https://github.com/CrimzoAgra/agros/issues
 
-Welcome to your [38;2;23;147;209mCachyOS[0m!
+Welcome to [38;2;190;196;238mAgrOS[0m!
 
 [41m [41m [41m [40m [44m [40m [41m [46m [45m [41m [46m [43m [41m [44m [45m [40m [44m [40m [41m [44m [41m [41m [46m [42m [41m [44m [43m [41m [45m [40m [40m [44m [40m [41m [44m [42m [41m [46m [44m [41m [46m [47m [0m
 EOF
@@ -143,7 +143,8 @@ prepare_profile(){
     rm -f ${src_dir}/archiso/airootfs/etc/systemd/system/display-manager.service
     if [ "$profile" == "desktop" ]; then
         cp ${src_dir}/archiso/packages_desktop.x86_64 ${src_dir}/archiso/packages.x86_64
-        ln -sf /usr/lib/systemd/system/plasmalogin.service ${src_dir}/archiso/airootfs/etc/systemd/system/display-manager.service
+        # AgrOS: greetd logs the live user straight into AgrOS's Hyprland session (/etc/greetd/config.toml)
+        ln -sf /usr/lib/systemd/system/greetd.service ${src_dir}/archiso/airootfs/etc/systemd/system/display-manager.service
     else
         die "Unknown profile: [%s]" "${profile}"
     fi
@@ -191,7 +192,7 @@ run_build() {
     sudo chown $USER $outFolder
 
     cp ${work_dir}/iso/arch/pkglist.x86_64.txt "$outFolder/$_profile/$(gen_iso_fn).pkgs.txt"
-    mv "$outFolder/$_profile/cachyos-$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)-x86_64.iso" "$outFolder/$_profile/${iso_file}"
+    mv "$outFolder/$_profile/agros-$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)-x86_64.iso" "$outFolder/$_profile/${iso_file}"
 
     msg "Done [Build ISO] ${iso_file}"
     msg "Finished building [%s]" "${_profile}"
@@ -229,7 +230,7 @@ run_build() {
 
 gen_iso_fn(){
     local vars=() name
-    vars+=("cachyos")
+    vars+=("agros")
     [[ -n ${profile} ]] && vars+=("${profile}")
 
     vars+=("linux")

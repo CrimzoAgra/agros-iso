@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install AgrOS
+Comment=Install AgrOS on this computer
+Icon=agros-logo
+Exec=/usr/local/bin/calamares-online.sh
+Terminal=false
+Categories=System;

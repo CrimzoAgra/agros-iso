@@ -1,0 +1,12 @@
+# The live USB: the live user straight into AgrOS's Hyprland session (Caelestia, AgrOS's settings), as the installed
+# system's login screen starts it; logged out, a text login that starts it again
+[terminal]
+vt = 1
+
+[initial_session]
+command = "uwsm start -e -D Hyprland hyprland.desktop"
+user = "liveuser"
+
+[default_session]
+command = "agreety --cmd 'uwsm start -e -D Hyprland hyprland.desktop'"
+user = "greeter"

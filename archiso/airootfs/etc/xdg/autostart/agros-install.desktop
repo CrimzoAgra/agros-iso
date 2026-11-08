@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install AgrOS
+Comment=The installer, opened when the live session starts
+Icon=agros-logo
+Exec=/usr/local/bin/calamares-online.sh
+Terminal=false
+NoDisplay=true

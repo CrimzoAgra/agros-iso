@@ -17,7 +17,14 @@ packages; nothing is removed or built afterwards.
   list, removes the desktop page, and makes CachyOS's own greetd step (`shellprocess@greetd`) start AgrOS's login
   screen.
 - `calamares-online.sh` installs the installer from `[agros]`: AgrOS rebuilds CachyOS's against the current libraries, because CachyOS's own can lag behind an Arch update and not start.
-- The ISO is named `agros`.
+- The live session is AgrOS's own desktop, not CachyOS's KDE: `packages_desktop.x86_64` has Hyprland, Caelestia and
+  AgrOS's settings instead of Plasma (the big apps of `agros-desktop` only go on the installed system), and greetd logs
+  the live user straight into it (`airootfs/etc/greetd/config.toml`, enabled by `util-iso.sh`). The installer opens
+  when the session starts, and is "Install AgrOS" in the app menu.
+- The installer is AgrOS's: its branding (`airootfs/usr/share/calamares/branding/agros`: the name, the logo and name as
+  in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
+  boot entry (`AgrOS`).
+- The ISO is named `agros`, and its console welcome (`util-iso.sh`'s motd) is AgrOS's.
 
 ### Build
 
