@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# AgrOS's settings for CachyOS's installer, made when it starts (calamares-online.sh, after it has put its own in
+# /etc/calamares): the package list is AgrOS's (netinstall.yaml beside this: CachyOS's base plus agros-desktop), so
+# there's no desktop page to pick from; and greetd starts AgrOS's login screen (the same step CachyOS uses for its
+# own greeter, shellprocess@greetd, run after the installer has set greetd up).
+set -euo pipefail
+settings=${1:-/etc/calamares/settings.conf}
+mods=${2:-/etc/calamares/modules}
+mkdir -p "$mods"
+cat >"$mods/netinstall.conf" <<'CONF'
+---
+groupsUrl:
+ - https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/etc/calamares/modules/netinstall.yaml
+ - file:///etc/calamares/modules/netinstall.yaml
+required: true
+label:
+ sidebar: "Packages"
+ title: "AgrOS"
+CONF
+cat >"$mods/shellprocess_greetd.conf" <<'CONF'
+---
+dontChroot: false
+timeout: 60
+script:
+ - command: |
+      if [ -f /etc/greetd/caelestia-greeter/greetd-config.toml ]; then
+        cp -f /etc/greetd/caelestia-greeter/greetd-config.toml /etc/greetd/config.toml
+        chmod 644 /etc/greetd/config.toml
+      fi
+i18n:
+  name: "Configuring the AgrOS login screen..."
+CONF
+# No desktop page: AgrOS is the desktop
+sed -i '/^  - packagechooser@desktop$/d' "$settings"
+grep -q 'packagechooser@desktop' "$settings" && { echo "AgrOS: the desktop page is still in $settings"; exit 1; }
+echo "AgrOS: installer configured."

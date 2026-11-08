@@ -199,3 +199,5 @@ xdg-utils
 xfsprogs
 xl2tpd
 zfs-utils
+# AgrOS: its repo's signing key, trusted by the live system and copied to the installed one
+agros-keyring

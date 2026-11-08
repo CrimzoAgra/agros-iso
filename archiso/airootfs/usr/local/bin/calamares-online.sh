@@ -11,7 +11,7 @@ main() {
     sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring
     # Also populate the keys, before starting the Installer, to avoid above issue
     sudo pacman-key --init
-    sudo pacman-key --populate archlinux cachyos
+    sudo pacman-key --populate archlinux cachyos agros
     # Also use timedatectl to sync the time with the hardware clock
     # There has been a bunch of reports, that the keyring was created in the future
     # Syncing appears to fix it
@@ -45,6 +45,8 @@ main() {
 EOF
 
     sudo cp "/usr/share/calamares/settings_${mode}.conf" /etc/calamares/settings.conf
+    # AgrOS: its package list (the AgrOS desktop), no desktop page, its login screen kept
+    sudo /usr/local/bin/agros-calamares-config
     exec pkexec-wrapper calamares -D6 >> $log
 }
 
