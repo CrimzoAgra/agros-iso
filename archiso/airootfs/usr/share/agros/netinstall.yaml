@@ -1,5 +1,5 @@
 # AgrOS's package list for CachyOS's installer: CachyOS's netinstall.yaml less the other desktops, Firefox,
-# Alacritty, CachyOS Hello and CachyOS's fish settings, plus the AgrOS group (agros-desktop: the whole desktop).
+# Alacritty, CachyOS Hello and CachyOS's fish and micro settings, plus the AgrOS group (agros-desktop: the whole desktop).
 # Left out: KDE-Desktop, CachyOS Handhelds, GNOME-Desktop, Cosmic, Niri, Cinnamon, Budgie-Desktop, MATE-Desktop, Xfce4, LXQT-Desktop, LXDE-Desktop, Hyprland, MangoWM, Sway, Wayfire, i3-Window-Manager, Qtile, bspwm, Openbox, Firefox and language package, Support for HP Printer/Scanner
 - name: CachyOS required (hidden)
   description: needed CachyOS packages
@@ -51,7 +51,6 @@
   - cachyos-kernel-manager
   - cachyos-packageinstaller
   - cachyos-settings
-  - cachyos-micro-settings
   - cachyos-wallpapers
 - name: CachyOS shell configuration
   description: 'Shell packages for CachyOS (AgrOS has its own fish settings: Caelestia''s)'
