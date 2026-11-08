@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AgrOS's settings for CachyOS's installer, made when it starts (calamares-online.sh, after it has put its own in
 # /etc/calamares): the package list is AgrOS's (/usr/share/agros/netinstall.yaml: CachyOS's base plus agros-desktop), so
-# there's no desktop page to pick from; and greetd starts AgrOS's login screen (the same step CachyOS uses for its
+# there's no desktop page to pick from; and greetd is enabled and starts AgrOS's login screen (the same step CachyOS uses for its
 # own greeter, shellprocess@greetd, run after the installer has set greetd up).
 set -euo pipefail
 settings=${1:-/etc/calamares/settings.conf}
@@ -27,6 +27,8 @@ script:
         cp -f /etc/greetd/caelestia-greeter/greetd-config.toml /etc/greetd/config.toml
         chmod 644 /etc/greetd/config.toml
       fi
+      # CachyOS's dmcheck only enables greetd for noctalia-greeter
+      ln -sf /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service
 i18n:
   name: "Configuring the AgrOS login screen..."
 CONF
