@@ -11,7 +11,7 @@ packages; nothing is removed or built afterwards.
 - `archiso/pacman.conf`, `archiso/airootfs/etc/pacman.conf` and `pacman-more.conf` (the installed system's) get the
   `[agros]` repo; `packages_desktop.x86_64` gets `agros-keyring`, whose key the installer trusts
   (`calamares-online.sh`) and copies to the installed system.
-- `archiso/airootfs/etc/calamares/modules/netinstall.yaml`: CachyOS's package list without the other desktops,
+- `archiso/airootfs/usr/share/agros/netinstall.yaml`: CachyOS's package list without the other desktops,
   Firefox, Alacritty, CachyOS Hello and CachyOS's fish settings, plus the AgrOS group.
 - `archiso/airootfs/usr/local/bin/agros-calamares-config`, run when the installer starts, points the installer at that
   list, removes the desktop page, and makes CachyOS's own greetd step (`shellprocess@greetd`) start AgrOS's login
