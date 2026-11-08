@@ -16,6 +16,7 @@ packages; nothing is removed or built afterwards.
 - `archiso/airootfs/usr/local/bin/agros-calamares-config`, run when the installer starts, points the installer at that
   list, removes the desktop page, and makes CachyOS's own greetd step (`shellprocess@greetd`) start AgrOS's login
   screen.
+- `calamares-online.sh` installs the installer from `[agros]`: AgrOS rebuilds CachyOS's against the current libraries, because CachyOS's own can lag behind an Arch update and not start.
 - The ISO is named `agros`.
 
 ### Build
