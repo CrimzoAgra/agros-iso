@@ -32,7 +32,8 @@ main() {
     local ISO_VERSION="$(cat /etc/version-tag)"
     echo "USING ISO VERSION: ${ISO_VERSION}"
 
-    sudo pacman -Sy --noconfirm cachyos-calamares-next
+    # (AgrOS's rebuild of the installer: CachyOS's own can lag behind an Arch library update and not start)
+    sudo pacman -Sy --noconfirm agros/cachyos-calamares-next
 
     # Get Hardware Informations
     inxi -F > "$log"
