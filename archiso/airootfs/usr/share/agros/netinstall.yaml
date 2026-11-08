@@ -160,6 +160,7 @@
     - pipewire-pulse
     - wireplumber
     - pipewire-alsa
+    - pipewire-jack
     - realtime-privileges
   - name: hardware
     description: Hardware support libs and firmware
