@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AgrOS's settings for CachyOS's installer, made when it starts (calamares-online.sh, after it has put its own in
-# /etc/calamares): the package list is AgrOS's (netinstall.yaml beside this: CachyOS's base plus agros-desktop), so
+# /etc/calamares): the package list is AgrOS's (/usr/share/agros/netinstall.yaml: CachyOS's base plus agros-desktop), so
 # there's no desktop page to pick from; and greetd starts AgrOS's login screen (the same step CachyOS uses for its
 # own greeter, shellprocess@greetd, run after the installer has set greetd up).
 set -euo pipefail
@@ -10,8 +10,8 @@ mkdir -p "$mods"
 cat >"$mods/netinstall.conf" <<'CONF'
 ---
 groupsUrl:
- - https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/etc/calamares/modules/netinstall.yaml
- - file:///etc/calamares/modules/netinstall.yaml
+ - https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/usr/share/agros/netinstall.yaml
+ - file:///usr/share/agros/netinstall.yaml
 required: true
 label:
  sidebar: "Packages"
