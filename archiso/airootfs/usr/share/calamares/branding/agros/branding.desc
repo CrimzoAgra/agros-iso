@@ -1,0 +1,37 @@
+# AgrOS's branding for CachyOS's installer (agros-calamares-config switches to it when the installer starts): AgrOS's
+# name, its logo and name as in its README, its lavender. The sidebar and stylesheet are CachyOS's, copied in then
+---
+componentName:  agros
+welcomeStyleCalamares:   false
+welcomeExpandingLogo:   true
+windowExpanding:    normal
+windowSize: 1100px,520px
+windowPlacement: center
+sidebar: qml,bottom
+navigation: widget
+
+strings:
+    productName:         AgrOS
+    shortProductName:    AgrOS
+    version:             rolling
+    shortVersion:        rolling
+    versionedName:       AgrOS
+    shortVersionedName:  AgrOS
+    bootloaderEntryName: AgrOS
+    productUrl:          https://github.com/CrimzoAgra/agros
+    supportUrl:          https://github.com/CrimzoAgra/agros/issues
+    knownIssuesUrl:      https://github.com/CrimzoAgra/agros/issues
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "icon.png"
+    productWelcome:      "welcome.png"
+
+style:
+   SidebarBackground:        "#13141c"
+   SidebarText:              "#FFFFFF"
+   SidebarTextCurrent:       "#13141c"
+   SidebarBackgroundCurrent: "#bec4ee"
+
+slideshow:               "show.qml"
+slideshowAPI: 2
