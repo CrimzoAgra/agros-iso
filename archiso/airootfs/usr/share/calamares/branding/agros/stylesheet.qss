@@ -91,15 +91,15 @@ QHeaderView::section {
 
 /* Check boxes and radio buttons */
 QCheckBox, QRadioButton { background: transparent; spacing: 8px; }
-QCheckBox::indicator, QRadioButton::indicator {
+QCheckBox::indicator, QRadioButton::indicator, QTreeView::indicator, QListView::indicator {
     width: 16px;
     height: 16px;
     border: 2px solid #aaaab5;
     background-color: transparent;
 }
-QCheckBox::indicator { border-radius: 4px; }
+QCheckBox::indicator, QTreeView::indicator, QListView::indicator { border-radius: 4px; }
 QRadioButton::indicator { border-radius: 10px; }
-QCheckBox::indicator:checked {
+QCheckBox::indicator:checked, QTreeView::indicator:checked, QListView::indicator:checked {
     border: 2px solid #bec4ee;
     background-color: #bec4ee;
     image: url(/usr/share/calamares/branding/agros/check.svg);
@@ -109,7 +109,8 @@ QRadioButton::indicator:checked {
     background-color: qradialgradient(cx: 0.5, cy: 0.5, radius: 0.5, fx: 0.5, fy: 0.5,
                                       stop: 0 #bec4ee, stop: 0.5 #bec4ee, stop: 0.56 transparent);
 }
-QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: #bec4ee; }
+QCheckBox::indicator:hover, QRadioButton::indicator:hover, QTreeView::indicator:hover { border-color: #bec4ee; }
+QTreeView::indicator:indeterminate { border: 2px solid #bec4ee; background-color: #4a5074; }
 
 /* Progress: a rounded track and the primary colour, like the shell's sliders */
 QProgressBar {
