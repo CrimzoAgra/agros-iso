@@ -35,6 +35,12 @@ sudo pacman -S archiso mkinitcpio-archiso git squashfs-tools grub --needed
 sudo ./buildiso.sh -p desktop -v -w
 ```
 
+A quick test build (zstd instead of xz: much faster, a bigger ISO; the build always runs at the lowest priority, so the desktop stays usable):
+
+```bash
+sudo ./buildiso.sh -p desktop -v -w -f
+```
+
 The ISO appears in `out/`. Write it to a USB stick (balenaEtcher, or `sudo dd if=out/agros-*.iso of=/dev/sdX bs=4M
 status=progress`) and boot it. The installer needs the internet (it downloads the packages).
 
@@ -84,6 +90,12 @@ cd cachyos-archiso
 ### Build
 ```bash
 sudo ./buildiso.sh -p desktop -v -w
+```
+
+A quick test build (zstd instead of xz: much faster, a bigger ISO; the build always runs at the lowest priority, so the desktop stays usable):
+
+```
+sudo ./buildiso.sh -p desktop -v -w -f
 ```
 
 As the result iso appears at the `out` folder
