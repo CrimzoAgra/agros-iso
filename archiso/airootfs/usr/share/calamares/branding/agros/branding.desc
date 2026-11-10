@@ -28,9 +28,9 @@ images:
     productWelcome:      "welcome.png"
 
 style:
-   SidebarBackground:        "#13141c"
-   SidebarText:              "#FFFFFF"
-   SidebarTextCurrent:       "#13141c"
+   SidebarBackground:        "#181920"
+   SidebarText:              "#e5e4f0"
+   SidebarTextCurrent:       "#373e61"
    SidebarBackgroundCurrent: "#bec4ee"
 
 slideshow:               "show.qml"
