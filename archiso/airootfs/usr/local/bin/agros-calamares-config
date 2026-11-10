@@ -32,13 +32,8 @@ script:
 i18n:
   name: "Configuring the AgrOS login screen..."
 CONF
-# AgrOS's branding (/usr/share/calamares/branding/agros: its name, logo and colours), with CachyOS's sidebar and
-# stylesheet, which it doesn't change; AgrOS's name in the install steps that say CachyOS's, and in the computer name
-# it suggests
-brand=${3:-/usr/share/calamares/branding}
-for f in calamares-sidebar.qml stylesheet.qss; do
-    if [[ -f $brand/cachyos/$f ]]; then cp -f "$brand/cachyos/$f" "$brand/agros/$f"; fi
-done
+# AgrOS's branding (/usr/share/calamares/branding/agros: its name, logo, colours, its own step bar and stylesheet in
+# the desktop's style); AgrOS's name in the install steps that say CachyOS's, and in the computer name it suggests
 sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i '/^ *name.*:/s/CachyOS/AgrOS/' "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
