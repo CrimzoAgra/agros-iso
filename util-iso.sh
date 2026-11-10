@@ -180,6 +180,13 @@ run_build() {
     msg2 "Copying the Archiso folder to build work"
     mkdir -p ${work_dir}
     cp -r archiso ${work_dir}/archiso
+    # AgrOS: a fast test build compresses with zstd (xz, for releases, takes every core for most of the build)
+    if $fast; then
+        msg2 "Fast build: zstd compression"
+        sed -i "s/^airootfs_image_tool_options=.*/airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '6' '-b' '1M')/" \
+            ${work_dir}/archiso/profiledef.sh
+        sed -i 's/^COMPRESSION=.*/COMPRESSION="zstd"/' ${work_dir}/archiso/airootfs/etc/mkinitcpio.conf.d/archiso.conf
+    fi
 
     msg "Start [Build ISO]"
 
@@ -188,7 +195,8 @@ run_build() {
 
     [ -d "$outFolder/$_profile" ] || mkdir -p "$outFolder/$_profile"
     cd ${work_dir}/archiso/
-    sudo mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
+    # AgrOS: at the lowest CPU and disk priority, so the desktop stays usable meanwhile (as fast when it's idle)
+    sudo nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
     sudo chown $USER $outFolder
 
     cp ${work_dir}/iso/arch/pkglist.x86_64.txt "$outFolder/$_profile/$(gen_iso_fn).pkgs.txt"
