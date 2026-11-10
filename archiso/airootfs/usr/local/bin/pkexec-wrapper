@@ -1,11 +1,20 @@
 #!/usr/bin/env sh
+# AgrOS: the Wayland socket by its full path, so root's Calamares reaches the live session's Hyprland without being
+# given the user's XDG_RUNTIME_DIR (root's files there would belong to root); KDE's session fell back to X, Hyprland's
+# has no X authority for root. Qt Quick drawn in software: drawn by the GPU, root's Calamares lost its Wayland
+# connection a second after opening (Hyprland: "unknown object, message attach"; seen in VMware)
+case $WAYLAND_DISPLAY in
+    "" | /*) wl=$WAYLAND_DISPLAY ;;
+    *) wl=$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ;;
+esac
 exec pkexec env \
     DISPLAY="$DISPLAY" \
     HOME="$HOME" \
     KDE_SESSION_VERSION="$KDE_SESSION_VERSION" \
-    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+    WAYLAND_DISPLAY="$wl" \
     XAUTHORITY="$XAUTHORITY" \
     XDG_CURRENT_DESKTOP="$XDG_CURRENT_DESKTOP" \
     XDG_SESSION_TYPE="$XDG_SESSION_TYPE" \
+    QT_QUICK_BACKEND=software \
     dbus-launch "$@"
 #    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
