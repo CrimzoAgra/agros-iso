@@ -35,7 +35,7 @@ sudo pacman -S archiso mkinitcpio-archiso git squashfs-tools grub --needed
 sudo ./buildiso.sh -p desktop -v -w
 ```
 
-A quick test build (zstd instead of xz: much faster, a bigger ISO; the build always runs at the lowest priority, so the desktop stays usable):
+The build gets half of the CPU at the lowest priority, so the PC stays cool, quiet and usable (`-a`: all of it, faster and hotter). A quick test build (zstd instead of xz: much faster, a bigger ISO):
 
 ```bash
 sudo ./buildiso.sh -p desktop -v -w -f
@@ -92,7 +92,7 @@ cd cachyos-archiso
 sudo ./buildiso.sh -p desktop -v -w
 ```
 
-A quick test build (zstd instead of xz: much faster, a bigger ISO; the build always runs at the lowest priority, so the desktop stays usable):
+The build gets half of the CPU at the lowest priority, so the PC stays cool, quiet and usable (`-a`: all of it, faster and hotter). A quick test build (zstd instead of xz: much faster, a bigger ISO):
 
 ```
 sudo ./buildiso.sh -p desktop -v -w -f
