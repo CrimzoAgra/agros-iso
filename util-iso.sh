@@ -195,8 +195,10 @@ run_build() {
 
     [ -d "$outFolder/$_profile" ] || mkdir -p "$outFolder/$_profile"
     cd ${work_dir}/archiso/
-    # AgrOS: at the lowest CPU and disk priority, so the desktop stays usable meanwhile (as fast when it's idle)
-    sudo nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
+    # AgrOS: at the lowest CPU and disk priority, so the desktop stays usable meanwhile, and on half the CPU at most
+    # (cpu_share, -a for all of it): every core flat out for the whole build ran the CPU at 86 °C with the fan at full
+    local quota=$(( $(nproc) * ${cpu_share:-50} ))
+    sudo systemd-run --quiet --scope -p CPUQuota=${quota}% nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
     sudo chown $USER $outFolder
 
     cp ${work_dir}/iso/arch/pkglist.x86_64.txt "$outFolder/$_profile/$(gen_iso_fn).pkgs.txt"

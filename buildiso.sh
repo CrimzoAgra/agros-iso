@@ -31,6 +31,7 @@ usage() {
     echo '    -r                 Enable building in RAM on systems with more than 23GB RAM'
     echo '    -w                 Remove build directory (not the ISO) after ISO file is built'
     echo '    -f                 Fast test build: zstd instead of xz (much quicker, a bigger ISO)'
+    echo '    -a                 Use all of the CPU (by default the build gets half: cooler and quieter)'
     echo "    -p <profile>       Buildset or profile [default: ${build_list_iso}]"
     echo '    -v                 Verbose output to log file, show profile detail (-q)'
     echo '    -h                 This help'
@@ -41,7 +42,7 @@ usage() {
 
 orig_argv=("$@")
 
-opts='p:cvhrwf'
+opts='p:cvhrwfa'
 
 while getopts "${opts}" arg; do
     case "${arg}" in
@@ -50,6 +51,7 @@ while getopts "${opts}" arg; do
         r) build_in_ram=true ;;
         w) remove_build_dir=true ;;
         f) fast=true ;;
+        a) cpu_share=100 ;;
         v) verbose=true ;;
         h|?) usage 0 ;;
         *) echo "invalid argument '${arg}'"; usage 1 ;;
