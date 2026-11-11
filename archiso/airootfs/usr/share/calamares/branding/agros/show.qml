@@ -1,4 +1,5 @@
-/* AgrOS's slideshow while it installs: its logo and name, as in its README */
+/* AgrOS's slideshow while it installs: its logo and name on a card with rounded corners, the leaves drawing themselves
+   and going again as it works (LoadingLogo.qml) */
 import QtQuick 2.15;
 import calamares.slideshow 1.0;
 
@@ -9,10 +10,14 @@ Presentation
     Slide {
         anchors.fill: parent
 
-        Image {
-            source: "slide1.png"
+        // (the page's own colour round the card: its corners show it)
+        Rectangle {
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
+            color: "#121318"
+        }
+
+        LoadingLogo {
+            anchors.fill: parent
         }
     }
 
