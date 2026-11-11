@@ -6,3 +6,5 @@ Icon=agros-logo
 Exec=/usr/local/bin/calamares-online.sh
 Terminal=false
 Categories=System;
+# (the installer's window: the dock shows this icon for it)
+StartupWMClass=io.calamares.calamares

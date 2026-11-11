@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Live session menu
+Comment=The Super menu with only the live session's apps
+Exec=/usr/local/bin/live-session-menu
+Terminal=false
+NoDisplay=true
