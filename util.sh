@@ -93,17 +93,17 @@ sign_with_key() {
         exit 1
     fi
 
-    if [ -z "$GPGKEY" ]; then
-        warning "Skipping signing due to lack of GPG key"
+    # No key set (makepkg.conf's GPGKEY): AgrOS's own, the one its packages are signed with (agros-keyring), from the
+    # keyring of whoever started the build (run with sudo: theirs, not root's)
+    GPGKEY=${GPGKEY:-23B6096B42D05E1E}
+    local as=()
+    [[ -n ${SUDO_USER:-} && $EUID -eq 0 ]] && as=(sudo -u "$SUDO_USER" -H)
+    if ! "${as[@]}" gpg --list-secret-keys "$GPGKEY" >/dev/null 2>&1; then
+        warning "Not signed: the key %s isn't in %s's keyring" "$GPGKEY" "${SUDO_USER:-$USER}"
         return 0
     fi
 
     msg2 "signing [%s] with key %s" "${1##*/}" "${GPGKEY}"
     [[ -e "$1".sig ]] && rm "$1".sig
-
-    local SIGNWITHKEY=()
-    if [[ -n $GPGKEY ]]; then
-        SIGNWITHKEY=(-u "${GPGKEY}")
-    fi
-    gpg --detach-sign --use-agent "${SIGNWITHKEY[@]}" "$1"
+    "${as[@]}" gpg --batch --detach-sign --use-agent -u "${GPGKEY}" "$1"
 }
