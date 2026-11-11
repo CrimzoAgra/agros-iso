@@ -99,13 +99,13 @@ Item {
         part(leaf.tipFrom, leaf.tipTo);
     }
 
-    // The loop: shown (0.7 s), gone, 0.13 s empty, drawn again, at one speed along the line that changes at the leaf's tip. Going
+    // The loop: shown (1.7 s), gone, 0.13 s empty, drawn again, at one speed along the line that changes at the leaf's tip. Going
     // starts at the normal speed (the whole line in 0.8 s) and, from early on the stem, gradually speeds up to 3 times it by the tip, for the
     // rest of the going and the drawing that follows; the drawing, from early on the stem, gradually slows back to the normal
     // speed for the rest. Times by stepping along the line (half a point a step)
     function loopOf(leaf) {
         const n = leaf.pts.length / 2, P = 9, L = n - 1 + P, tip = leaf.stemEnd, R = 45; // (P: drawLeaf's; R: the ramp, most of the stem)
-        const v0 = L / 800, H = 700, step = 0.5, times = [0];
+        const v0 = L / 800, H = 1700, step = 0.5, times = [0];
         const ramp = x => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
         // u: 0-L the going (its tail at u - P), L-2L the drawing (its head at u - L)
         const speed = u => u < L ? v0 * (1 + 2 * ramp((u - P - (tip - R)) / R)) : v0 * (3 - 2 * ramp((u - L - (tip + 15)) / R)); // (the drawing slows from 15 points past the tip to 60 past it, near the end)
