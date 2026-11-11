@@ -24,6 +24,7 @@ verbose=false
 build_in_ram=false
 remove_build_dir=false
 fast=false
+upload=false
 
 usage() {
     echo "Usage: ${0##*/} [options]"
@@ -32,6 +33,7 @@ usage() {
     echo '    -w                 Remove build directory (not the ISO) after ISO file is built'
     echo '    -f                 Fast test build: zstd instead of xz (much quicker, a bigger ISO)'
     echo '    -a                 Use all of the CPU (by default the build gets half: cooler and quieter)'
+    echo '    -u                 Upload the ISO to SourceForge once it is built (upload-iso.sh, as the sudo user)'
     echo "    -p <profile>       Buildset or profile [default: ${build_list_iso}]"
     echo '    -v                 Verbose output to log file, show profile detail (-q)'
     echo '    -h                 This help'
@@ -42,7 +44,7 @@ usage() {
 
 orig_argv=("$@")
 
-opts='p:cvhrwfa'
+opts='p:cvhrwfau'
 
 while getopts "${opts}" arg; do
     case "${arg}" in
@@ -52,6 +54,7 @@ while getopts "${opts}" arg; do
         w) remove_build_dir=true ;;
         f) fast=true ;;
         a) cpu_share=100 ;;
+        u) upload=true ;;
         v) verbose=true ;;
         h|?) usage 0 ;;
         *) echo "invalid argument '${arg}'"; usage 1 ;;
@@ -86,3 +89,10 @@ trap 'trap_exit EXIT "$(gettext "An unknown error has occurred. Exiting...")"' E
 run_build "${build_list_iso}"
 # (finished: the EXIT trap was only for a build that stops halfway, it said "unknown error" after every good one too)
 trap - EXIT
+
+# upload-iso.sh switches to $SUDO_USER itself (their SSH key, keyring and ~/.config/agros-iso/upload.conf).
+# The build is done: a failed upload reports its own error, not the ERR trap's "unknown error"
+if [[ "$upload" == "true" ]]; then
+    trap - ERR
+    "${src_dir}/upload-iso.sh" "${outFolder}/${build_list_iso}/${iso_file}"
+fi

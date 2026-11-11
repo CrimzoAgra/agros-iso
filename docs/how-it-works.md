@@ -18,6 +18,8 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `util-iso.sh` | The build itself: `prepare_profile` and `run_build`, the console welcome, the ISO's file name |
 | `util-iso-mount.sh` | Unmounts what a stopped build left mounted |
 | `util-msg.sh` | Coloured messages and `import` |
+| `upload-iso.sh` | Uploads a built ISO, with its `.sha256`, `.sig` and `.pkgs.txt`, to SourceForge (`buildiso.sh -u`, or by hand): see [Publishing the ISO](../manual/03-building.md#publishing-the-iso) |
+| `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
 | `testiso.sh` | Boots the built ISO in a VirtualBox VM |
 | `lddd.sh` | CachyOS's check for binaries with missing libraries |
 | `ci.build.sh`, `.github/workflows/build.yml`, `machines/`, `testcases/` | CachyOS's CI: builds the ISO on GitHub and test-installs it with [quicktest](https://github.com/quickemu-project/quicktest) for each bootloader and file system |
@@ -53,7 +55,7 @@ The AgrOS ones in `archiso/airootfs/`:
 
 `sudo ./buildiso.sh -p desktop -v -w` runs these, in order:
 
-1. **Options.** `-c`, `-r`, `-w`, `-f`, `-a`, `-p`, `-v` and `-h`, as in [Building the ISO](../manual/03-building.md).
+1. **Options.** `-c`, `-r`, `-w`, `-f`, `-a`, `-u`, `-p`, `-v` and `-h`, as in [Building the ISO](../manual/03-building.md).
    The work folder is `build/` (with `-r` and more than 23 GB of RAM, a `mktemp` folder in RAM); the output is
    `out/`. If `archiso` isn't installed, `check_requirements` installs it with yay or trizen.
 2. **`prepare_profile`** writes the generated files into `archiso/` (they're in `.gitignore`): the date as the
@@ -78,6 +80,10 @@ The AgrOS ones in `archiso/airootfs/`:
    the signature. Signing each build's ISO alone, not every ISO in the folder again, is an AgrOS change.
 8. **Cleanup.** With `-w` it deletes the work folder. The exit trap, there to report a build that stops halfway, is
    cleared at the end, so a good build no longer ends with "An unknown error has occurred".
+9. **Upload**, with `-u` only: `upload-iso.sh` on the ISO just built. Run as root, it starts itself again as
+   `$SUDO_USER` (`sudo -u "$SUDO_USER" -H`), so ssh, gpg and `~/.config/agros-iso/upload.conf` are that user's. It
+   checks the `.sha256` and the `.sig`, then copies the files to SourceForge's file release system with rsync (or scp),
+   and with `SF_API_KEY` set makes the ISO the default download through SourceForge's API.
 
 ## What AgrOS changes from CachyOS's ISO
 
@@ -105,7 +111,7 @@ The AgrOS ones in `archiso/airootfs/`:
 - The boot menus say AgrOS (GRUB, the BIOS menu and the unused systemd-boot entries; the kernel's own files keep their
   names). The BIOS menu's background is the AgrOS banner and its title is in the logo's colour (`#bec4ee`).
 - The ISO is named `agros`, and its console welcome (`util-iso.sh`'s motd) is AgrOS's.
-- The build: `-f`, `-a`, the low priority and half-CPU default, the per-ISO checksums and signature with AgrOS's key,
+- The build: `-f`, `-a`, `-u` (upload to SourceForge), the low priority and half-CPU default, the per-ISO checksums and signature with AgrOS's key,
   and no "unknown error" after a good build.
 
 ## The installer
