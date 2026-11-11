@@ -1,0 +1,10 @@
+#!/bin/sh
+# Live session: the Super menu with only what the live session is for (the installer, a terminal, files, a browser, the
+# partition editor), not every app of the installed system. Caelestia's own setting (launcher.hiddenApps: one pattern
+# hiding every other app), added to the installed system's settings file the live user has, which it follows as it
+# changes; under the lock the other writers of that file take. Run when the live session starts (its autostart entry)
+f=$HOME/.config/caelestia/shell.json
+mkdir -p "${f%/*}"
+exec 9>"$f.lock"; flock 9
+[ -s "$f" ] || echo '{}' >"$f"
+jq --indent 4 '.launcher.hiddenApps = ["^(?!(agros-install|foot|thunar|librewolf|gparted)$).*$"]' "$f" >"$f.tmp" && mv "$f.tmp" "$f"
