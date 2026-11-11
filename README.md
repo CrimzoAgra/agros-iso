@@ -1,101 +1,43 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/agros-banner.svg">
+    <img src="docs/images/agros-banner-animated.png" alt="AgrOS" width="420">
+  </picture>
+</p>
+
 # AgrOS ISO
 
-The installer ISO for [AgrOS](https://github.com/CrimzoAgra/agros): a fork of CachyOS's live ISO (Calamares, CachyOS's
-kernels, its hardware detection). It's set up the way CachyOS sets up its own editions: AgrOS's repo, `[agros]`, is
-in the live and installed systems' `pacman.conf`, and the installer's package list (`netinstall.yaml`) has one AgrOS
-group, `agros-keyring` and `agros-desktop`, besides CachyOS's base. pacman installs exactly the final set of
-packages; nothing is removed or built afterwards.
+This repo builds the installer ISO for [AgrOS](https://github.com/CrimzoAgra/agros). It's a fork of
+[CachyOS's Live ISO](https://github.com/CachyOS/CachyOS-Live-ISO): the same installer (Calamares), CachyOS's kernels and
+its hardware detection, with AgrOS's package repo, branding and live session.
 
-### What AgrOS changes here
+Boot the ISO and you get AgrOS's own desktop with the installer already open. It installs CachyOS's base and AgrOS's
+desktop from the `[agros]` repo in one go: pacman installs exactly the final set of packages, and nothing is removed or
+built afterwards.
 
-- `archiso/pacman.conf`, `archiso/airootfs/etc/pacman.conf` and `pacman-more.conf` (the installed system's) get the
-  `[agros]` repo; `packages_desktop.x86_64` gets `agros-keyring`, whose key the installer trusts
-  (`calamares-online.sh`) and copies to the installed system.
-- `archiso/airootfs/usr/share/agros/netinstall.yaml`: CachyOS's package list without the other desktops,
-  Firefox, Alacritty, CachyOS Hello and CachyOS's fish settings, plus the AgrOS group.
-- `archiso/airootfs/usr/local/bin/agros-calamares-config`, run when the installer starts, points the installer at that
-  list, removes the desktop page, and makes CachyOS's own greetd step (`shellprocess@greetd`) start AgrOS's login
-  screen.
-- `calamares-online.sh` installs the installer from `[agros]`: AgrOS rebuilds CachyOS's against the current libraries, because CachyOS's own can lag behind an Arch update and not start.
-- The live session is AgrOS's own desktop, not CachyOS's KDE: `packages_desktop.x86_64` has Hyprland, Caelestia and
-  AgrOS's settings instead of Plasma (the big apps of `agros-desktop` only go on the installed system), and greetd logs
-  the live user straight into it (`airootfs/etc/greetd/config.toml`, enabled by `util-iso.sh`). The installer opens
-  when the session starts, and is "Install AgrOS" in the app menu.
-- The installer is AgrOS's: its branding (`airootfs/usr/share/calamares/branding/agros`: the name, the logo and name as
-  in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
-  boot entry (`AgrOS`).
-- The ISO is named `agros`, and its console welcome (`util-iso.sh`'s motd) is AgrOS's.
+## The AgrOS ISO Manual
 
-### Build
+- [What the ISO is](manual/01-what-it-is.md)
 
-On Arch or CachyOS (about 3 GB of space; building in RAM needs more than 23 GB), once the `[agros]` repo is published:
+**Building it**
 
-```bash
-sudo pacman -S archiso mkinitcpio-archiso git squashfs-tools grub --needed
-sudo ./buildiso.sh -p desktop -v -w
-```
+- [What you need](manual/02-requirements.md)
+- [Building the ISO](manual/03-building.md)
+- [Testing it in a VM](manual/04-testing.md)
 
-The build gets half of the CPU at the lowest priority, so the PC stays cool, quiet and usable (`-a`: all of it, faster and hotter). A quick test build (zstd instead of xz: much faster, a bigger ISO):
+**What's on it**
 
-```bash
-sudo ./buildiso.sh -p desktop -v -w -f
-```
+- [The live session and the installer](manual/05-live-session-and-installer.md)
+- [Troubleshooting](manual/06-troubleshooting.md)
 
-The ISO appears in `out/`. Write it to a USB stick (balenaEtcher, or `sudo dd if=out/agros-*.iso of=/dev/sdX bs=4M
-status=progress`) and boot it. The installer needs the internet (it downloads the packages).
+**For developers**
 
-To follow CachyOS's changes: `git pull upstream master` (upstream: `https://github.com/CachyOS/CachyOS-Live-ISO`).
-When CachyOS changes its package list, update `netinstall.yaml` the same way.
+- [How the ISO works](docs/how-it-works.md): the profile's layout, the scripts, what AgrOS changes from CachyOS's ISO,
+  and how the `[agros]` repo fits in
 
----
+## License
 
-CachyOS's original README follows.
-
-These are the basic needed files and folders to build CachyOS system.
-
-### buildiso
-
-buildiso is used to build CachyOS ISO.
-
-#### Arguments
-
-~~~
-$ ./buildiso.sh -h
-Usage: buildiso [options]
-    -c                 Disable clean work dir
-    -r                 Disable building in RAM on systems with more than 23GB RAM
-    -w                 Remove build directory (not the ISO) after ISO file is built
-    -h                 This help
-    -p <profile>       Buildset or profile [default: desktop]
-    -v                 Verbose output to log file, show profile detail (-q)
-~~~
-
-* Uses the same signature that normal repo and has no mirrors package to install.
-
-```bash
-sudo pacman -Syy
-```
-
-### Install necessary packages:
-```bash
-sudo pacman -S archiso mkinitcpio-archiso git squashfs-tools grub --needed
-```
-
-### Clone:
-```bash
-git clone https://github.com/cachyos/cachyos-live-iso.git cachyos-archiso
-cd cachyos-archiso
-```
-
-### Build
-```bash
-sudo ./buildiso.sh -p desktop -v -w
-```
-
-The build gets half of the CPU at the lowest priority, so the PC stays cool, quiet and usable (`-a`: all of it, faster and hotter). A quick test build (zstd instead of xz: much faster, a bigger ISO):
-
-```
-sudo ./buildiso.sh -p desktop -v -w -f
-```
-
-As the result iso appears at the `out` folder
+The AgrOS ISO is released under the [GPL-3.0](LICENSE). It builds on
+[CachyOS's Live ISO](https://github.com/CachyOS/CachyOS-Live-ISO), Arch's
+[archiso](https://gitlab.archlinux.org/archlinux/archiso) and [Calamares](https://github.com/calamares/calamares); see
+[credits](docs/how-it-works.md#credits).
