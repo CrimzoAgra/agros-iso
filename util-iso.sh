@@ -208,23 +208,10 @@ run_build() {
     msg "Finished building [%s]" "${_profile}"
 
     cd "$outFolder/$_profile"
-    for f in $(find . -maxdepth 1 -name '*.iso' | cut -d'/' -f2); do
-        if [[ ! -e $f.sha256 ]]; then
-            create_chksums $f
-        elif [[ $f -nt $f.sha256 ]]; then
-            create_chksums $f
-        else
-            info "checksums for [$f] already created"
-        fi
-        if [[ ! -e $f.sig ]]; then
-            sign_with_key $f
-        elif [[ $f -nt $f.sig ]]; then
-            rm $f.sig
-            sign_with_key $f
-        else
-            info "signature file for [$f] already created"
-        fi
-    done
+    # This build's ISO only (the older ones in the folder have theirs: it went through each of them, every build)
+    rm -f "${iso_file}.sig"
+    create_chksums "${iso_file}"
+    sign_with_key "${iso_file}"
     show_elapsed_time "${FUNCNAME}" "${timer_start}"
     if [[ "$build_in_ram" == "true" && "$remove_build_dir" == "false" ]]; then
         msg "!!! Remember to remove $work_dir !!!"

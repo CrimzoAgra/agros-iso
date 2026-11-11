@@ -84,3 +84,5 @@ trap 'trap_exit USR1 "$(gettext "An unknown error has occurred. Exiting...")"' E
 trap 'trap_exit EXIT "$(gettext "An unknown error has occurred. Exiting...")"' EXIT
 
 run_build "${build_list_iso}"
+# (finished: the EXIT trap was only for a build that stops halfway, it said "unknown error" after every good one too)
+trap - EXIT
