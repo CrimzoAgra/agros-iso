@@ -52,6 +52,9 @@ QLineEdit, QTextEdit, QPlainTextEdit, QTextBrowser, QSpinBox {
 }
 QLineEdit:focus, QTextEdit:focus, QSpinBox:focus { border: 1px solid #bec4ee; }
 QComboBox {
+    /* a list of 10 under the field, not Qt's own popup: on Wayland that one took the whole list's height (its end off
+       the screen) with a white scroll strip on top (the language list) */
+    combobox-popup: 0;
     background-color: #1e1f26;
     border: 1px solid #464750;
     border-radius: 12px;
@@ -77,11 +80,24 @@ QListView, QTreeView, QTableView, QListWidget, QTreeWidget {
     outline: none;
 }
 QListView::item, QTreeView::item, QListWidget::item { padding: 5px 8px; border-radius: 8px; }
+/* A tree's row is one cell per column: one pill across them, rounded at its ends only (the package list) */
+QTreeView::item { border-radius: 0; }
+QTreeView::item:last { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+QTreeView::item:only-one { border-radius: 8px; }
 QListView::item:hover, QTreeView::item:hover, QListWidget::item:hover { background-color: #24252e; }
 QListView::item:selected, QTreeView::item:selected, QListWidget::item:selected {
     background-color: #bec4ee;
     color: #373e61;
 }
+/* The arrow's place is the pill's rounded left end: Qt fills it as a square of its own otherwise, and draws no arrow
+   once it's given a colour (so these arrows) */
+QTreeView::branch:adjoins-item { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+QTreeView::branch:hover:adjoins-item { background-color: #24252e; }
+QTreeView::branch:selected:adjoins-item { background-color: #bec4ee; }
+QTreeView::branch:has-children:closed { image: url(/usr/share/calamares/branding/agros/branch-closed.svg); }
+QTreeView::branch:has-children:open { image: url(/usr/share/calamares/branding/agros/branch-open.svg); }
+QTreeView::branch:has-children:closed:selected { image: url(/usr/share/calamares/branding/agros/branch-closed-selected.svg); }
+QTreeView::branch:has-children:open:selected { image: url(/usr/share/calamares/branding/agros/branch-open-selected.svg); }
 QHeaderView::section {
     background-color: #181920;
     color: #aaaab5;
@@ -111,6 +127,8 @@ QRadioButton::indicator:checked {
 }
 QCheckBox::indicator:hover, QRadioButton::indicator:hover, QTreeView::indicator:hover { border-color: #bec4ee; }
 QTreeView::indicator:indeterminate { border: 2px solid #bec4ee; background-color: #4a5074; }
+/* (on a highlighted row: its box outlined, not lost in the highlight) */
+QTreeView::indicator:checked:selected { border-color: #373e61; }
 
 /* Progress: a rounded track and the primary colour, like the shell's sliders */
 QProgressBar {
@@ -143,3 +161,8 @@ QMenu::item:selected { background-color: #373a4d; }
 QMessageBox, QDialog { background-color: #181920; }
 QGroupBox { border: 1px solid #24252e; border-radius: 14px; margin-top: 14px; padding: 10px; }
 QGroupBox::title { subcontrol-origin: margin; left: 12px; color: #aaaab5; }
+
+/* The install page (its widget named "slideshow"): no square frame round the slideshow and the log (they're tabs of a
+   widget whose tabs are hidden); the slideshow draws its own rounded card (show.qml), the log is one like it */
+#slideshow QTabWidget::pane { border: none; background: transparent; }
+#slideshow QPlainTextEdit, #slideshow QTextEdit { background-color: #181920; border: 1px solid #24252e; border-radius: 18px; }
