@@ -1,5 +1,6 @@
 /* The install page's loading animation: AgrOS's logo (its README banner, the name beside it in the logo's line), the
-   three leaves drawn from the centre out, along the stem, round the tip and back, then gone the same way, and again.
+   three leaves drawn from the centre out, along the stem, round the tip and back, then gone the same way, and again
+   (loopOf: 3 times as fast from the leaf's tip as it goes until it nears it drawing).
    Each line's moving ends come to a point, as the leaf's tips do; the finished leaf is the logo's own, its return line
    cut by the logo's gap (agros-logo.svg's mask). On a card with rounded corners (the slideshow's frame squared them).
    In the logo's colour, on Canvas (the installer draws Qt Quick in software here: pkexec-wrapper): one per leaf, so
@@ -10,9 +11,8 @@ import QtQuick 2.15
 Item {
     id: root
 
-    // How much of each leaf is drawn: from tail to head, 0-1 along it
-    property real head: 0
-    property real tail: 0
+    // Where in the loop it is (ms, piecesAt)
+    property real ms: 0
 
     readonly property color line: "#bec4ee"
     // Each leaf: its points (x, y, ...), and where the logo's paths start and end in them (stem, tip, return line)
@@ -28,17 +28,13 @@ Item {
         "M313.78 -29.51C307.78 -36.38 279.78 -36.38 279.78 -23.88C279.78 -11.38 313.78 -11.38 313.78 1.12C313.78 13.62 283.78 13.62 277.78 6.74"
     ]
 
-    onHeadChanged: leafCanvases.paint()
-    onTailChanged: leafCanvases.paint()
+    onMsChanged: leafCanvases.paint()
 
-    // One leaf, on its own layer (ctx): from tail to head (0-1) along its points. The parts as the logo draws them:
-    // the return line, then the logo's gap cut out of it (its stems 18 wide, erased), then the stem and the mitred
-    // tip over it
-    function drawLeaf(ctx, leaf, head, tail, stems, strokeSvg) {
+    // One leaf, on its own layer (ctx): its pieces, each [head, tail] (0-1 along it; more than one while the next
+    // drawing starts at the centre as the last one leaves). The parts as the logo draws them: the return line, then the
+    // logo's gap cut out of it (its stems 18 wide, erased), then the stem and the mitred tip over it
+    function drawLeaf(ctx, leaf, pieces, stems, strokeSvg) {
         const pts = leaf.pts, n = pts.length / 2, W = 8, P = 9; // line width; how long it grows thin, in points (0.8 apart)
-        const h = head * (n - 1 + P), t = tail * (n - 1 + P) - P;
-        if (h <= Math.max(t, 0))
-            return;
         // a point at index i (fractional; past the ends, on along the end's direction)
         const at = i => {
             const k = Math.max(0, Math.min(n - 2, Math.floor(i))), f = i - k;
@@ -50,39 +46,49 @@ Item {
         };
         // The moving ends cut on the slant of the logo's own ends (where its gap cuts the return line: the edge on the
         // leaf's inside 1.6 longer, over the line's 8): the drawing end so, the erasing end the mirror of it, its face
-        // turned to the leaf's inside. While the piece is short it's thinner too, so it grows out of a point
-        const len = h - Math.max(t, 0), w = W * Math.min(1, len / (2 * P)), d = 2 * w / W; // (d: the slant, in points)
-        const headBase = h - d / 2, tailBase = t > 0 ? t + d / 2 : 0;
+        // turned to the leaf's inside. While a piece is short it's thinner too, so it grows out of a point
+        const shown = [];
+        for (const [head, tail] of pieces) {
+            const h = head * (n - 1 + P), t = tail * (n - 1 + P) - P;
+            if (h <= Math.max(t, 0))
+                continue;
+            const len = h - Math.max(t, 0), w = W * Math.min(1, len / (2 * P)), d = 2 * w / W; // (d: the slant, in points)
+            shown.push({ h, t, w, d, headBase: h - d / 2, tailBase: t > 0 ? t + d / 2 : 0 });
+        }
         // the cut's corner: from the line's end (base) its edge on one side (side: +1 the leaf's inside) runs on to tip
-        function nib(base, tip, side) {
+        function nib(p, base, tip, side) {
             const back = tip > base ? -0.6 : 0.6; // (from a little inside the line: no seam where they meet)
             const c = at(base + back), nr = normal(base), e = at(tip), ne = normal(tip);
             ctx.beginPath();
-            ctx.moveTo(c[0] + nr[0] * side * w / 2, c[1] + nr[1] * side * w / 2);
-            ctx.lineTo(e[0] + ne[0] * side * w / 2, e[1] + ne[1] * side * w / 2);
-            ctx.lineTo(c[0] - nr[0] * side * w / 2, c[1] - nr[1] * side * w / 2);
+            ctx.moveTo(c[0] + nr[0] * side * p.w / 2, c[1] + nr[1] * side * p.w / 2);
+            ctx.lineTo(e[0] + ne[0] * side * p.w / 2, e[1] + ne[1] * side * p.w / 2);
+            ctx.lineTo(c[0] - nr[0] * side * p.w / 2, c[1] - nr[1] * side * p.w / 2);
             ctx.closePath();
             ctx.fill();
         }
-        // the visible piece within the logo path lo..hi: a line, and a point where a moving end falls in it
+        // each piece within the logo path lo..hi: a line, and its cut where a moving end falls in it
         function part(lo, hi) {
-            const a = Math.max(lo, tailBase), b = Math.min(hi, headBase);
-            if (b > a) {
-                ctx.lineWidth = w;
-                ctx.beginPath();
-                const s = at(a);
-                ctx.moveTo(s[0], s[1]);
-                for (let i = Math.floor(a) + 1; i < b; i++)
-                    ctx.lineTo(pts[i * 2], pts[i * 2 + 1]);
-                const e = at(b);
-                ctx.lineTo(e[0], e[1]);
-                ctx.stroke();
+            for (const p of shown) {
+                const a = Math.max(lo, p.tailBase), b = Math.min(hi, p.headBase);
+                if (b > a) {
+                    ctx.lineWidth = p.w;
+                    ctx.beginPath();
+                    const s = at(a);
+                    ctx.moveTo(s[0], s[1]);
+                    for (let i = Math.floor(a) + 1; i < b; i++)
+                        ctx.lineTo(pts[i * 2], pts[i * 2 + 1]);
+                    const e = at(b);
+                    ctx.lineTo(e[0], e[1]);
+                    ctx.stroke();
+                }
+                if (p.headBase >= lo - 0.01 && p.headBase <= hi)
+                    nib(p, p.headBase, p.h + p.d / 2, 1);
+                if (p.t > 0 && p.tailBase >= lo && p.tailBase <= hi + 0.01)
+                    nib(p, p.tailBase, p.t - p.d / 2, -1);
             }
-            if (headBase >= lo - 0.01 && headBase <= hi)
-                nib(headBase, h + d / 2, 1);
-            if (t > 0 && tailBase >= lo && tailBase <= hi + 0.01)
-                nib(tailBase, t - d / 2, -1);
         }
+        if (!shown.length)
+            return;
         part(leaf.stemEnd, n - 1 + P); // (past its end: the gap cuts it there anyway)
         ctx.globalCompositeOperation = "destination-out";
         ctx.lineWidth = 18;
@@ -91,6 +97,37 @@ Item {
         ctx.globalCompositeOperation = "source-over";
         part(0, leaf.stemEnd);
         part(leaf.tipFrom, leaf.tipTo);
+    }
+
+    // The loop: shown (0.7 s), gone, 0.13 s empty, drawn again, at one speed along the line that changes at the leaf's tip. Going
+    // starts at the normal speed (the whole line in 0.8 s) and, from early on the stem, gradually speeds up to 3 times it by the tip, for the
+    // rest of the going and the drawing that follows; the drawing, from early on the stem, gradually slows back to the normal
+    // speed for the rest. Times by stepping along the line (half a point a step)
+    function loopOf(leaf) {
+        const n = leaf.pts.length / 2, P = 9, L = n - 1 + P, tip = leaf.stemEnd, R = 45; // (P: drawLeaf's; R: the ramp, most of the stem)
+        const v0 = L / 800, H = 700, step = 0.5, times = [0];
+        const ramp = x => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+        // u: 0-L the going (its tail at u - P), L-2L the drawing (its head at u - L)
+        const speed = u => u < L ? v0 * (1 + 2 * ramp((u - P - (tip - R)) / R)) : v0 * (3 - 2 * ramp((u - L - (tip + 15)) / R)); // (the drawing slows from 15 points past the tip to 60 past it, near the end)
+        for (let u = 0; u < 2 * L; u += step)
+            times.push(times[times.length - 1] + step / speed(u + step / 2));
+        const gap = 130, gone = times[Math.round(L / step)]; // (gap: the empty card between going and drawing)
+        return { L, H, step, times, gap, gone, C: H + times[times.length - 1] + gap };
+    }
+    function piecesAt(ms, leaf) {
+        const o = loopOf(leaf);
+        let t = ((ms % o.C) + o.C) % o.C - o.H;
+        if (t < 0)
+            return [[1, 0]];
+        if (t >= o.gone && t < o.gone + o.gap)
+            return [];
+        if (t >= o.gone)
+            t -= o.gap;
+        let k = 1;
+        while (k < o.times.length - 1 && o.times[k] < t)
+            k++;
+        const u = Math.min(2 * o.L, (k - 1 + (t - o.times[k - 1]) / (o.times[k] - o.times[k - 1])) * o.step);
+        return u < o.L ? [[1, u / o.L]] : [[(u - o.L) / o.L, 0]];
     }
 
     // The banner's box (its SVG's viewBox), fitted in the card with room round it; the same for every layer
@@ -107,16 +144,14 @@ Item {
         ctx.miterLimit = 10;
     }
 
-    // Built (1.6 s), shown, gone (1.6 s), a pause, and again
-    SequentialAnimation {
+    // (one loop: loopOf's length, about 2.9 s)
+    readonly property real loopMs: loopOf(leaves[0]).C
+    NumberAnimation on ms {
         running: root.visible
         loops: Animation.Infinite
-
-        NumberAnimation { target: root; property: "head"; from: 0; to: 1; duration: 1600; easing.type: Easing.InOutCubic }
-        PauseAnimation { duration: 700 }
-        NumberAnimation { target: root; property: "tail"; from: 0; to: 1; duration: 1600; easing.type: Easing.InOutCubic }
-        PauseAnimation { duration: 500 }
-        ScriptAction { script: { root.tail = 0; root.head = 0; } }
+        from: 0
+        to: root.loopMs
+        duration: root.loopMs
     }
 
     Rectangle {
@@ -166,7 +201,7 @@ Item {
                     const ctx = getContext("2d");
                     ctx.reset();
                     root.place(ctx, width, height);
-                    root.drawLeaf(ctx, root.leaves[index], root.head, root.tail, root.stems, (c, s) => {
+                    root.drawLeaf(ctx, root.leaves[index], root.piecesAt(root.ms, root.leaves[index]), root.stems, (c, s) => {
                         c.beginPath();
                         c.path = s;
                         c.stroke();
