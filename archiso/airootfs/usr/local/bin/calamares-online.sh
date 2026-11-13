@@ -47,7 +47,14 @@ EOF
 
     sudo cp "/usr/share/calamares/settings_${mode}.conf" /etc/calamares/settings.conf
     # AgrOS: its package list (the AgrOS desktop), no desktop page, its login screen kept
-    sudo /usr/local/bin/agros-calamares-config
+    # (not started when a setting didn't apply: a CachyOS update had moved it, and the install would have gone on with
+    # CachyOS's, Limine and no bootloader among them, failing only after the disk was wiped)
+    if ! sudo /usr/local/bin/agros-calamares-config >>"$log" 2>&1; then
+        why=$(grep '^AgrOS:' "$log" | tail -1)
+        notify-send -u critical -a AgrOS -i dialog-error "The installer couldn't be set up" \
+            "${why:-The AgrOS settings for the installer did not apply}. Nothing was changed on your disks. Details: $log"
+        exit 1
+    fi
     exec pkexec-wrapper calamares -D6 >> $log
 }
 

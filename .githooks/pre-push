@@ -1,0 +1,22 @@
+#!/bin/sh
+# agros-iso: a push of main publishes the ISO built from it (publish-iso.sh, in a terminal window of its own: your
+# password, about 30 minutes of building, then the upload to SourceForge). The push itself goes on at once.
+# Turned on in a clone by: git config core.hooksPath .githooks. Skipped by: AGROS_NO_PUBLISH=1 git push
+[ -z "$AGROS_NO_PUBLISH" ] || exit 0
+zero=0000000000000000000000000000000000000000
+sha=
+while read -r _lref lsha rref _rsha; do
+    [ "$rref" = refs/heads/main ] && [ "$lsha" != "$zero" ] && sha=$lsha
+done
+[ -n "$sha" ] || exit 0
+root=$(git rev-parse --show-toplevel)
+short=$(printf %.7s "$sha")
+if [ -n "$WAYLAND_DISPLAY" ] && command -v foot >/dev/null; then
+    # (not with the editor's variables: an Electron one left in made apps started from it misbehave)
+    env -u ELECTRON_RUN_AS_NODE setsid -f foot --hold --title "Publishing the AgrOS ISO ($short)" \
+        "$root/publish-iso.sh" "$sha" >/dev/null 2>&1
+    echo "agros-iso: publishing the ISO for $short in a new terminal window"
+else
+    echo "agros-iso: no desktop to open a terminal in: publish this push's ISO with ./publish-iso.sh $sha"
+fi
+exit 0

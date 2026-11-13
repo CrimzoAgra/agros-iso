@@ -10,7 +10,7 @@
 # GNU General Public License for more details.
 
 set -e
-src_dir=$(pwd)
+src_dir=$(dirname "$(readlink -f "$0")")  # (the repo, wherever it's run from)
 [[ -r ${src_dir}/util-msg.sh ]] && source ${src_dir}/util-msg.sh
 import ${src_dir}/util.sh
 

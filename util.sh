@@ -85,7 +85,9 @@ create_chksums() {
 }
 
 sign_with_key() {
-    load_vars "$HOME/.makepkg.conf" || true
+    # (the home of whoever ran it: under sudo $HOME is root's)
+    local _home; _home=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+    load_vars "$_home/.config/pacman/makepkg.conf" || load_vars "$_home/.makepkg.conf" || true
     load_vars /etc/makepkg.conf
 
     if [ ! -e "$1" ]; then

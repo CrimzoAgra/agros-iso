@@ -3,6 +3,7 @@
 # Uploads a built ISO, with its .sha256, .sig and .pkgs.txt, to SourceForge's file release system.
 #
 #   ./upload-iso.sh [--dry-run] [iso]
+#   ./upload-iso.sh --check      the settings and the SSH key work (publish-iso.sh, before its build)
 #
 # Without an ISO it takes the newest in out/desktop. Settings come from the environment or from
 # ~/.config/agros-iso/upload.conf (the environment wins):
@@ -20,12 +21,13 @@ if [[ $EUID -eq 0 && -n ${SUDO_USER:-} ]]; then
     exec sudo -u "$SUDO_USER" -H "$0" "$@"
 fi
 
-dry_run=false
+dry_run=false check=false
 iso=
 for arg in "$@"; do
     case $arg in
         -n|--dry-run) dry_run=true ;;
-        -h|--help) sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --check) check=true ;;
+        -h|--help) sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*) die "unknown option $arg" ;;
         *) [[ -z $iso ]] || die "only one ISO at a time"; iso=$arg ;;
     esac
@@ -44,6 +46,17 @@ SF_FOLDER=${SF_FOLDER#/}; SF_FOLDER=${SF_FOLDER%/}
 [[ -n $SF_USER ]] || die "SF_USER isn't set: put SF_USER=<your SourceForge user> in $conf (or the environment)"
 [[ -n $SF_PROJECT ]] || die "SF_PROJECT isn't set: put SF_PROJECT=<project> in $conf (or the environment)"
 [[ -n $SF_FOLDER ]] || die "SF_FOLDER is empty"
+if $check; then
+    # (SourceForge's file server takes SFTP only: a listing of the project's folder, without a password prompt)
+    if ! out=$(echo "ls /home/frs/project/$SF_PROJECT" | sftp -b - -o BatchMode=yes -o ConnectTimeout=15 "$SF_USER@frs.sourceforge.net" 2>&1); then
+        # (the first connection: the server's key not known yet, which only a connection by hand can confirm)
+        grep -q 'Host key verification failed' <<<"$out" &&
+            die "SourceForge's server isn't known yet: connect once by hand (sftp $SF_USER@frs.sourceforge.net), check its fingerprint against SourceForge's page, answer yes, then bye"
+        die "can't reach SourceForge as $SF_USER with your SSH key (is the key in your SourceForge account, the project $SF_PROJECT yours?): $(tail -1 <<<"$out")"
+    fi
+    echo "SourceForge: $SF_USER, project $SF_PROJECT, folder $SF_FOLDER: OK"
+    exit 0
+fi
 
 if [[ -z $iso ]]; then
     out=$(dirname "$(readlink -f "$0")")/out/desktop

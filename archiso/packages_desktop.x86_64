@@ -12,7 +12,7 @@ bolt
 brltty
 btrfs-progs
 cachy-chroot
-cachyos-calamares-next
+agros/cachyos-calamares-next
 cachyos-cli-installer-new
 cachyos-drm-awaiter
 cachyos-hooks
@@ -184,8 +184,6 @@ uwsm
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 qt6-wayland
-# (the installer's bootloader pictures are JPEG XL: Qt reads them with KDE's image plugins)
-kimageformats
 quickshell-git
 caelestia-shell
 caelestia-cli

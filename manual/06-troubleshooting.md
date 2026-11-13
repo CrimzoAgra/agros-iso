@@ -18,8 +18,6 @@ build deletes it first, unless you pass `-c`.
 **mkarchiso is verbose even without `-v`.** `-v` switches on mkarchiso's own verbose output by editing
 `/usr/bin/mkarchiso`, and that stays. Reinstall `archiso` to undo it.
 
-**`testiso.sh` says "No ISO to load present".** It expects exactly one ISO in `out/desktop/`. Move the older ones out.
-
 ## Booting
 
 **The stick doesn't boot.** Turn off Secure Boot in the BIOS: CachyOS, and so AgrOS, doesn't boot with it on.

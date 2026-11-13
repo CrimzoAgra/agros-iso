@@ -20,14 +20,29 @@ CONF
 cat >"$mods/shellprocess_greetd.conf" <<'CONF'
 ---
 dontChroot: false
-timeout: 60
+timeout: 600
 script:
  - command: |
+      # The packages' own pacman.conf, resolv.conf and mirror lists, set aside because the live system's (AgrOS's repos,
+      # ranked mirrors) were copied over them: six .pacnew files on a new install, nothing in them to merge
+      rm -f /etc/pacman.conf.pacnew /etc/resolv.conf.pacnew /etc/pacman.d/*mirrorlist.pacnew
+      # The snapshots the install's own package runs made (snap-pac's pre/post pairs): the boot menu's snapshot list
+      # starts with the installation's own snapshot alone (taken after this step: the btrfs step below adds it to the menu)
+      n=$(snapper --no-dbus -c root --csvout list --columns number,description 2>/dev/null |
+        awk -F, 'NR > 1 && $1 > 0 && $2 !~ /Installation/ {print $1}')
+      [ -z "$n" ] || snapper --no-dbus -c root delete $n || echo "AgrOS: the install's snapshots left as they were"
+      # AgrOS's boot menu (hidden, 1 s, quiet, AgrOS's GRUB theme) and fast splash, now that GRUB is set up: agros-boot's own install ran
+      # before /boot/grub existed (it failed), and the installer's grubcfg and plymouthcfg steps set CachyOS's after it
+      # (timeout 600: the splash rebuilds both kernels' initramfs)
+      /usr/lib/agros/boot-menu || echo "AgrOS: the boot menu left as it was"
+      /usr/lib/agros/splash-theme || echo "AgrOS: the splash left as it was"
+      # (CachyOS's offline-install tool, copied in by its pacstrap step and never used: it uninstalls the VM tools)
+      rm -f /usr/local/bin/remove-nvidia
       if [ -f /etc/greetd/caelestia-greeter/greetd-config.toml ]; then
         cp -f /etc/greetd/caelestia-greeter/greetd-config.toml /etc/greetd/config.toml
         chmod 644 /etc/greetd/config.toml
       fi
-      # CachyOS's dmcheck only enables greetd for noctalia-greeter
+      # (last: its result is the step's) CachyOS's dmcheck only enables greetd for noctalia-greeter
       ln -sf /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service
 i18n:
   name: "Configuring the AgrOS login screen..."
@@ -37,10 +52,39 @@ CONF
 sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i '/^ *name.*:/s/CachyOS/AgrOS/' "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
+# The first snapshot's name (Calamares's btrfs step), and the snapshot in GRUB's menu from the first boot: the step runs
+# after the boot menu was made, and grub-btrfsd only adds snapshots taken after it starts (once: the installer restarted)
+snap="${settings%/*}/scripts/btrfs-installation-snapshot"
+sed -i 's/Fresh CachyOS/Fresh AgrOS/' "$snap" 2>/dev/null || true
+if [ -f "$snap" ] && ! grep -q 'agros: menu' "$snap"; then
+    echo '[ -x /etc/grub.d/41_snapshots-btrfs ] && [ -d /boot/grub ] && grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 || true  # agros: menu' >>"$snap"
+fi
 # The boot entry the firmware lists (and GRUB's folder on the boot partition, EFI/AgrOS)
 sed -i 's/^efiBootloaderId: .*/efiBootloaderId: "AgrOS"/' "$mods/bootloader.conf" 2>/dev/null || true
 
 # No desktop page: AgrOS is the desktop
 sed -i '/^  - packagechooser@desktop$/d' "$settings"
 grep -q 'packagechooser@desktop' "$settings" && { echo "AgrOS: the desktop page is still in $settings"; exit 1; }
+
+# GRUB only, no bootloader page (AgrOS's boot menu, theme and snapshots are GRUB's). The page's choice
+# (packagechooser_bootloader, Limine by default) is what the bootloader, pacstrap (its packages) and grubcfg steps read,
+# and what picks the partition page's settings (bootloaderOverrides): with no page, the bootloader step is told GRUB,
+# the other two take GRUB when nothing was chosen, and the partition page starts on GRUB's settings (the boot partition
+# at /boot/efi, 512 MB; Limine's is /boot, the kernels on it, where GRUB's btrfs snapshots can't reach them)
+pymods=${3:-/usr/lib/calamares/modules}
+sed -i '/^  - packagechooser@bootloader$/d' "$settings"
+sed -i -e '/^efiBootLoaderVar:/d' -e 's/^efiBootLoader: .*/efiBootLoader: "grub"/' "$mods/bootloader.conf"
+sed -i 's/globalstorage.value("packagechooser_bootloader")$/globalstorage.value("packagechooser_bootloader") or "grub"/' \
+    "$pymods/pacstrap/main.py" "$pymods/grubcfg/main.py"
+sed -i -e 's|^efiSystemPartition: .*|efiSystemPartition:     "/boot/efi"|' -e 's/^efiSystemPartitionSize: .*/efiSystemPartitionSize:     512M/' \
+    -e 's/^allowZfsEncryption: .*/allowZfsEncryption: false/' "$mods/partition.conf"
+grep -q 'packagechooser@bootloader' "$settings" && { echo "AgrOS: the bootloader page is still in $settings"; exit 1; }
+grep -qx 'efiBootLoader: "grub"' "$mods/bootloader.conf" && ! grep -q '^efiBootLoaderVar' "$mods/bootloader.conf" ||
+    { echo "AgrOS: the bootloader step isn't set to GRUB ($mods/bootloader.conf)"; exit 1; }
+for f in "$pymods/pacstrap/main.py" "$pymods/grubcfg/main.py"; do
+    grep -q 'value("packagechooser_bootloader") or "grub"' "$f" || { echo "AgrOS: $f doesn't default to GRUB"; exit 1; }
+done
+grep -q '^efiSystemPartition: *"/boot/efi"' "$mods/partition.conf" && grep -q '^efiSystemPartitionSize: *512M' "$mods/partition.conf" &&
+    grep -q '^allowZfsEncryption: false' "$mods/partition.conf" ||
+    { echo "AgrOS: the partition page isn't on GRUB's boot partition ($mods/partition.conf)"; exit 1; }
 echo "AgrOS: installer configured."
