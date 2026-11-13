@@ -1,0 +1,54 @@
+#!/bin/bash
+# Publishes a new AgrOS ISO when agros-iso's main or AgrOS's published packages changed (agros-iso-publish.timer, every
+# 15 minutes). Builds as root only what's on GitHub, in a copy of its own (/var/lib/agros-iso-publish: never your
+# editable folders), and uploads as $AGROS_PUBLISH_USER (their SSH key, gpg key and ~/.config/agros-iso/upload.conf).
+# Says how it went in a notification. Installed by publish/install.sh; its log: journalctl -u agros-iso-publish
+set -euo pipefail
+user=${AGROS_PUBLISH_USER:?}
+repo=https://github.com/CrimzoAgra/agros-iso.git
+state=/var/lib/agros-iso-publish
+src=$state/agros-iso
+install -d -m 755 "$state"
+
+notify() {  # urgency title body: on the desktop when there is one
+    local bus
+    bus=/run/user/$(id -u "$user")/bus
+    [[ -S $bus ]] || return 0
+    runuser -u "$user" -- env DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+        notify-send -u "$1" -a "AgrOS ISO" -i media-optical "$2" "$3" || true
+}
+# AgrOS's CI still running: its packages aren't published yet (the ISO would have the old ones)
+ci_busy() {
+    curl -fsS --max-time 30 "https://api.github.com/repos/CrimzoAgra/agros/actions/runs?status=$1&per_page=1" |
+        grep -q '"total_count": *[1-9]'
+}
+
+commit=$(git ls-remote "$repo" refs/heads/main | cut -f1) || true
+[[ -n $commit ]] || { echo "GitHub unreachable: next time"; exit 0; }
+if ci_busy in_progress || ci_busy queued; then echo "AgrOS's CI is running: next time"; exit 0; fi
+# The packages' names and versions in AgrOS's repo (changed by each push of agros once its CI passed)
+pkgs=$(curl -fsSL --max-time 120 https://crimzoagra.github.io/agros/x86_64/agros.db | bsdtar -tf - | grep '/$' |
+    sort | sha256sum | cut -c1-16) || { echo "AgrOS's repo unreachable: next time"; exit 0; }
+key="$commit $pkgs"
+[[ $key != "$(cat "$state/published" 2>/dev/null)" ]] || { echo "Up to date (${commit:0:7})"; exit 0; }
+# A failed one is tried again after 6 hours, or at once by publish-iso.sh
+if [[ $key == "$(cat "$state/failed" 2>/dev/null)" ]] && [[ -n $(find "$state/failed" -mmin -360) ]]; then
+    echo "Failed less than 6 hours ago: later"; exit 0
+fi
+
+fail() {
+    echo "$key" >"$state/failed"
+    notify critical "The AgrOS ISO wasn't published" "$1. Details: journalctl -u agros-iso-publish"
+    exit 1
+}
+[[ -d $src/.git ]] || git clone -q "$repo" "$src"
+git -C "$src" fetch -q origin "$commit"
+git -C "$src" checkout -q --force --detach "$commit"
+git -C "$src" clean -q -fdx
+runuser -u "$user" -- "$src/upload-iso.sh" --check || fail "SourceForge refused the upload's settings or SSH key"
+echo "Building the ISO for ${commit:0:7}: $(git -C "$src" log -1 --format=%s)"
+notify low "Building the AgrOS ISO" "For ${commit:0:7}: about 30 minutes, then the upload"
+SUDO_USER=$user "$src/buildiso.sh" -p desktop -v -w -u || fail "Its build or upload failed (${commit:0:7})"
+echo "$key" >"$state/published"
+rm -f "$state/failed"
+notify normal "AgrOS ISO published" "${commit:0:7} is the download now"

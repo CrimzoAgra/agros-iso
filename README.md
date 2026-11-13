@@ -20,7 +20,7 @@ built afterwards.
 **[Download the latest AgrOS ISO](https://sourceforge.net/projects/agros-iso/files/latest/download)** (about 3.7 GB,
 from SourceForge). Every ISO, with its `.sha256` checksum and `.sig` signature:
 [sourceforge.net/projects/agros-iso/files/iso](https://sourceforge.net/projects/agros-iso/files/iso/). A new one is
-published with each change to this repo. To check a download, see
+published by itself after each change to this repo or to AgrOS's packages. To check a download, see
 [Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
 
 ## The AgrOS ISO Manual
