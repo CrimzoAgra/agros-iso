@@ -15,7 +15,7 @@ runs. Add `-a` to give it all of the CPU: faster, but hotter and louder.
 sudo ./buildiso.sh -p desktop -v -w -f
 ```
 
-`-f` compresses with zstd instead of xz. It's much faster and makes a bigger ISO. Use it to try out a change, and
+`-f` compresses at a lower zstd level (6, instead of 15). It's quicker and makes a bigger ISO. Use it to try out a change, and
 build without it for a release.
 
 ## Options
@@ -26,7 +26,7 @@ Usage: buildiso.sh [options]
     -c                 Disable clean work dir
     -r                 Enable building in RAM on systems with more than 23GB RAM
     -w                 Remove build directory (not the ISO) after ISO file is built
-    -f                 Fast test build: zstd instead of xz (much quicker, a bigger ISO)
+    -f                 Fast test build: a lower zstd level (quicker, a bigger ISO)
     -a                 Use all of the CPU (by default the build gets half: cooler and quieter)
     -u                 Upload the ISO to SourceForge once it is built (upload-iso.sh, as the sudo user)
     -p <profile>       Buildset or profile [default: desktop]

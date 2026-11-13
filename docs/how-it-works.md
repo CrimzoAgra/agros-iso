@@ -23,7 +23,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main`, or AgrOS's packages changed (checked hourly, after agros's CI); built, signed and uploaded there. See [Published by itself](../manual/03-building.md#published-by-itself) |
 | `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
 | `lddd.sh` | CachyOS's check for binaries with missing libraries |
-| `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with xz, file permissions |
+| `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with zstd (level 15), file permissions |
 | `archiso/packages_desktop.x86_64` | The live system's packages (copied to `packages.x86_64` at build time) |
 | `archiso/pacman.conf` | The repos the live system is built from, `[agros]` included |
 | `archiso/airootfs/` | Files copied onto the live system |
@@ -64,9 +64,8 @@ The AgrOS ones in `archiso/airootfs/`:
    CachyOS-PKGBUILDS; a mask for `cachyos-rate-mirrors.timer`; the console welcome (`etc/motd`, AgrOS's); the
    `display-manager.service` link to greetd; `packages.x86_64`; `etc/environment` (`ZPOOL_VDEV_NAME_PATH=1`); and
    `etc/edition-tag` (`desktop`). Any profile but `desktop` stops the build.
-3. **`run_build`** deletes the old work folder (not with `-c`) and copies `archiso/` into it. With `-f`, it switches
-   the copy's squashfs (`profiledef.sh`) and initramfs (`archiso.conf`) compression from xz to zstd, so the
-   repo's profile stays as it is.
+3. **`run_build`** deletes the old work folder (not with `-c`) and copies `archiso/` into it. With `-f`, it lowers
+   the copy's squashfs zstd level (`profiledef.sh`) from 15 to 6, so the repo's profile stays as it is.
 4. **mkarchiso changes.** The build patches the system's `/usr/bin/mkarchiso` once, so the ISO doesn't ship Arch's
    `archlinux-keyring-wkd-sync.timer`, and its package list is read from the ISO's package database with no repos
    set (through the live system's own pacman.conf it warned that the keyring, made at boot, isn't there yet). With

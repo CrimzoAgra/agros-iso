@@ -31,7 +31,7 @@ usage() {
     echo '    -c                 Disable clean work dir'
     echo '    -r                 Enable building in RAM on systems with more than 23GB RAM'
     echo '    -w                 Remove build directory (not the ISO) after ISO file is built'
-    echo '    -f                 Fast test build: zstd instead of xz (much quicker, a bigger ISO)'
+    echo '    -f                 Fast test build: a lower zstd level (quicker, a bigger ISO)'
     echo '    -a                 Use all of the CPU (by default the build gets half: cooler and quieter)'
     echo '    -u                 Upload the ISO to SourceForge once it is built (upload-iso.sh, as the sudo user)'
     echo "    -p <profile>       Buildset or profile [default: ${build_list_iso}]"
