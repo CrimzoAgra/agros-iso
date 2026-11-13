@@ -9,8 +9,8 @@ and build again.
 **Packages from `[agros]` aren't found.** The ISO's packages come from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`). Check that it's published and that you can reach it.
 
-**The build is slow.** By default it gets half of the CPU. Use `-a` for all of it, `-f` for a quick test build with
-zstd, or `-r` to build in RAM on a machine with more than 23 GB.
+**The build is slow.** By default it gets half of the CPU. Use `-a` for all of it, `-f` for a quick test build (a
+lower zstd level), or `-r` to build in RAM on a machine with more than 23 GB.
 
 **A build stopped halfway.** The build unmounts what it mounted and leaves the work folder (`build/`) behind. The next
 build deletes it first, unless you pass `-c`.

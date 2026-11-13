@@ -191,12 +191,11 @@ run_build() {
     rm -rf ${work_dir}/archiso
     cp -r "${src_dir}/archiso" "${work_dir}/archiso"
     change_grub_version "${_iso_version}"
-    # AgrOS: a fast test build compresses with zstd (xz, for releases, takes every core for most of the build)
+    # AgrOS: a fast test build compresses at a lower zstd level (bigger, quicker)
     if $fast; then
-        msg2 "Fast build: zstd compression"
+        msg2 "Fast build: zstd level 6"
         sed -i "s/^airootfs_image_tool_options=.*/airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '6' '-b' '1M')/" \
             ${work_dir}/archiso/profiledef.sh
-        sed -i 's/^COMPRESSION=.*/COMPRESSION="zstd"/' ${work_dir}/archiso/airootfs/etc/mkinitcpio.conf.d/archiso.conf
     fi
 
     msg "Start [Build ISO]"
