@@ -83,12 +83,15 @@ fetch_cachyos_mirrorlist() {
     mkdir -p ${src_dir}/archiso/airootfs/etc/pacman.d
     local _mirrorlist_url="https://github.com/CachyOS/CachyOS-PKGBUILDS/raw/master/cachyos-mirrorlist/cachyos-mirrorlist"
 
-    curl -sSL "${_mirrorlist_url}" > ${src_dir}/archiso/airootfs/etc/pacman.d/cachyos-mirrorlist
+    # (-f and through a .tmp: an error page or an empty file never becomes the live system's mirror list)
+    local _f=${src_dir}/archiso/airootfs/etc/pacman.d/cachyos-mirrorlist
+    curl -fsSL "${_mirrorlist_url}" -o "$_f.tmp" && mv "$_f.tmp" "$_f"
 }
 
 change_grub_version() {
     local _version="$1"
-    sed -i "s/CACHYOS_VERSION=\".*\"/CACHYOS_VERSION=\"${_version}\"/" ${src_dir}/archiso/grub/grub.cfg
+    # (the build's copy, both menus: it changed the repo's grub.cfg at every build, and loopback.cfg said "GIT")
+    sed -i "s/CACHYOS_VERSION=\".*\"/CACHYOS_VERSION=\"${_version}\"/" ${work_dir}/archiso/grub/{grub,loopback}.cfg
 }
 
 generate_environment() {
@@ -122,6 +125,12 @@ modify_mkarchiso() {
     else
         msg "mkarchiso is already patched!"
     fi
+    # The ISO's package list read from its package database with no repos set: through the live system's own
+    # pacman.conf (--sysroot) it warned that the keyring, made at boot, isn't there yet
+    if grep -q 'pacman -Q --sysroot "${pacstrap_dir}"' /usr/bin/mkarchiso; then
+        msg "Patching mkarchiso's package list..."
+        sudo sed -i 's|pacman -Q --sysroot "${pacstrap_dir}"|pacman -Q --config /dev/null --dbpath "${pacstrap_dir}/var/lib/pacman"|g' /usr/bin/mkarchiso
+    fi
 }
 
 prepare_profile(){
@@ -129,8 +138,7 @@ prepare_profile(){
 
     info "Profile: [%s]" "${profile}"
 
-    local _iso_version="$(date +%y%m%d)"
-    change_grub_version "${_iso_version}"
+    _iso_version="$(date +%y%m%d)"  # (the boot menus get it in run_build, on the build's copy)
 
     # Fetch up-to-date version of CachyOS repo mirrorlist
     fetch_cachyos_mirrorlist
@@ -179,7 +187,10 @@ run_build() {
 
     msg2 "Copying the Archiso folder to build work"
     mkdir -p ${work_dir}
-    cp -r archiso ${work_dir}/archiso
+    # (the old copy gone first: kept by -c, cp put the new profile inside it, archiso/archiso, and the old one was built)
+    rm -rf ${work_dir}/archiso
+    cp -r "${src_dir}/archiso" "${work_dir}/archiso"
+    change_grub_version "${_iso_version}"
     # AgrOS: a fast test build compresses with zstd (xz, for releases, takes every core for most of the build)
     if $fast; then
         msg2 "Fast build: zstd compression"
@@ -199,10 +210,13 @@ run_build() {
     # (cpu_share, -a for all of it): every core flat out for the whole build ran the CPU at 86 °C with the fan at full
     local quota=$(( $(nproc) * ${cpu_share:-50} ))
     sudo systemd-run --quiet --scope -p CPUQuota=${quota}% nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
-    sudo chown $USER $outFolder
+    sudo chown "${SUDO_USER:-$USER}" "$outFolder"  # (under sudo, $USER is root)
 
     cp ${work_dir}/iso/arch/pkglist.x86_64.txt "$outFolder/$_profile/$(gen_iso_fn).pkgs.txt"
-    mv "$outFolder/$_profile/agros-$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)-x86_64.iso" "$outFolder/$_profile/${iso_file}"
+    # (whatever date mkarchiso named it with: a build past midnight, or its build_date kept by -c, is another day's)
+    local _built=("$outFolder/$_profile"/agros-????.??.??-x86_64.iso)
+    [[ ${#_built[@]} == 1 && -f ${_built[0]} ]] || die "mkarchiso's ISO not found (or several) in $outFolder/$_profile"
+    mv "${_built[0]}" "$outFolder/$_profile/${iso_file}"
 
     msg "Done [Build ISO] ${iso_file}"
     msg "Finished building [%s]" "${_profile}"

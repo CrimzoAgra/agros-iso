@@ -3,7 +3,7 @@
 ## A machine to build on
 
 - Arch Linux or CachyOS.
-- About 3 GB of free disk space. Building in RAM (`-r`) needs more than 23 GB of RAM.
+- About 20 GB of free disk space: the work folder while it builds (removed after, with `-w`) and the ISO, about 3.5 GB each time. Building in RAM (`-r`) needs more than 23 GB of RAM.
 - sudo rights: the build runs as root.
 - The `[agros]` repo published, since the ISO's packages come from it.
 
@@ -31,6 +31,6 @@ cd agros-iso
 
 - **The AgrOS signing key** in your gpg keyring, to sign the ISO. Without it the build still works, the ISO is just
   unsigned. See [Building the ISO](03-building.md#checksums-and-signature).
-- **VirtualBox**, to test the ISO with `testiso.sh`. See [Testing it in a VM](04-testing.md).
+- **VMware Workstation**, to test the ISO with `testiso.sh`. See [Testing it in a VM](04-testing.md).
 
 Next: [Building the ISO](03-building.md)

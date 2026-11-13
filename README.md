@@ -15,6 +15,14 @@ Boot the ISO and you get AgrOS's own desktop with the installer already open. It
 desktop from the `[agros]` repo in one go: pacman installs exactly the final set of packages, and nothing is removed or
 built afterwards.
 
+## Download
+
+**[Download the latest AgrOS ISO](https://sourceforge.net/projects/agros-iso/files/latest/download)** (about 3.7 GB,
+from SourceForge). Every ISO, with its `.sha256` checksum and `.sig` signature:
+[sourceforge.net/projects/agros-iso/files/iso](https://sourceforge.net/projects/agros-iso/files/iso/). A new one is
+published with each change to this repo. To check a download, see
+[Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
+
 ## The AgrOS ISO Manual
 
 - [What the ISO is](manual/01-what-it-is.md)

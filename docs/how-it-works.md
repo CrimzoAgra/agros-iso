@@ -20,9 +20,9 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `util-msg.sh` | Coloured messages and `import` |
 | `upload-iso.sh` | Uploads a built ISO, with its `.sha256`, `.sig` and `.pkgs.txt`, to SourceForge (`buildiso.sh -u`, or by hand): see [Publishing the ISO](../manual/03-building.md#publishing-the-iso) |
 | `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
-| `testiso.sh` | Boots the built ISO in a VirtualBox VM |
+| `publish-iso.sh`, `.githooks/pre-push` | A push of `main` publishes the ISO: the hook opens a terminal running `publish-iso.sh`, which builds the pushed commit in a clean copy (`~/.cache/agros-iso-publish`) and uploads it (`git config core.hooksPath .githooks` turns the hook on): see [Published on every push](../manual/03-building.md#published-on-every-push) |
+| `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
 | `lddd.sh` | CachyOS's check for binaries with missing libraries |
-| `ci.build.sh`, `.github/workflows/build.yml`, `machines/`, `testcases/` | CachyOS's CI: builds the ISO on GitHub and test-installs it with [quicktest](https://github.com/quickemu-project/quicktest) for each bootloader and file system |
 | `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with xz, file permissions |
 | `archiso/packages_desktop.x86_64` | The live system's packages (copied to `packages.x86_64` at build time) |
 | `archiso/pacman.conf` | The repos the live system is built from, `[agros]` included |
@@ -59,7 +59,8 @@ The AgrOS ones in `archiso/airootfs/`:
    The work folder is `build/` (with `-r` and more than 23 GB of RAM, a `mktemp` folder in RAM); the output is
    `out/`. If `archiso` isn't installed, `check_requirements` installs it with yay or trizen.
 2. **`prepare_profile`** writes the generated files into `archiso/` (they're in `.gitignore`): the date as the
-   version in `grub.cfg` (`CACHYOS_VERSION`) and in `etc/version-tag`; CachyOS's current mirrorlist, downloaded from
+   version in `etc/version-tag` (and in the work copy's `grub.cfg` and `loopback.cfg`, `CACHYOS_VERSION`, once copied:
+   the repo's say `GIT`); CachyOS's current mirrorlist (the build stops if it can't be downloaded), from
    CachyOS-PKGBUILDS; a mask for `cachyos-rate-mirrors.timer`; the console welcome (`etc/motd`, AgrOS's); the
    `display-manager.service` link to greetd; `packages.x86_64`; `etc/environment` (`ZPOOL_VDEV_NAME_PATH=1`); and
    `etc/edition-tag` (`desktop`). Any profile but `desktop` stops the build.
@@ -67,15 +68,16 @@ The AgrOS ones in `archiso/airootfs/`:
    the copy's squashfs (`profiledef.sh`) and initramfs (`archiso.conf`) compression from xz to zstd, so the
    repo's profile stays as it is.
 4. **mkarchiso changes.** The build patches the system's `/usr/bin/mkarchiso` once, so the ISO doesn't ship Arch's
-   `archlinux-keyring-wkd-sync.timer`. With `-v` it also sets mkarchiso's `quiet="n"`. Both edits stay until
-   `archiso` is reinstalled.
+   `archlinux-keyring-wkd-sync.timer`, and its package list is read from the ISO's package database with no repos
+   set (through the live system's own pacman.conf it warned that the keyring, made at boot, isn't there yet). With
+   `-v` it also sets mkarchiso's `quiet="n"`. These edits stay until `archiso` is reinstalled.
 5. **mkarchiso** builds the ISO into `out/desktop/`, through
    `systemd-run --scope -p CPUQuota=...% nice -n 19 ionice -c 3`. The quota is half of the CPU (`nproc` x 50 %), or
    all of it with `-a`: every core flat out for the whole build ran the CPU at 86 °C with the fan at full.
-6. **Naming.** mkarchiso's `agros-YYYY.MM.DD-x86_64.iso` is renamed to `agros-desktop-linux-YYMMDD.iso`
-   (`gen_iso_fn`), and the live system's package list is copied next to it as `.pkgs.txt`.
+6. **Naming.** mkarchiso's `agros-YYYY.MM.DD-x86_64.iso` (whatever its date: a build that ran past midnight, or a
+   work folder kept by `-c`) is renamed to `agros-desktop-linux-YYMMDD.iso` (`gen_iso_fn`), and the live system's package list is copied next to it as `.pkgs.txt`.
 7. **Checksums and signature** for that ISO only: `.sha1` and `.sha256`, then a detached `.sig`. `sign_with_key`
-   takes `GPGKEY` from `~/.makepkg.conf` or `/etc/makepkg.conf`, or else AgrOS's key `23B6096B42D05E1E` (the one
+   takes `GPGKEY` from `~/.config/pacman/makepkg.conf`, `~/.makepkg.conf` (the home of whoever ran it, under sudo too) or `/etc/makepkg.conf`, or else AgrOS's key `23B6096B42D05E1E` (the one
    `agros-keyring` holds), and signs as `$SUDO_USER` with that user's keyring. Without the key it warns and skips
    the signature. Signing each build's ISO alone, not every ISO in the folder again, is an AgrOS change.
 8. **Cleanup.** With `-w` it deletes the work folder. The exit trap, there to report a build that stops halfway, is
@@ -143,12 +145,24 @@ as the partition names, from the palette and not the stylesheet.
   `https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/usr/share/agros/netinstall.yaml`
   first, and the ISO's own copy (`file:///usr/share/agros/netinstall.yaml`) if that can't be fetched. So a change to
   `netinstall.yaml` pushed to `main` reaches ISOs that are already built.
-- `shellprocess_greetd.conf`: copies `caelestia-greeter`'s greetd config into place and enables greetd. CachyOS's
-  `dmcheck` only enables greetd for `noctalia-greeter`, so without this AgrOS would boot to a text login.
+- `shellprocess_greetd.conf` (the install's last step, in the new system): removes the six `.pacnew` files of the
+  live system's pacman.conf, resolv.conf and mirror lists; deletes the snapshots the install's own package runs made
+  (the boot menu's list starts with the installation's alone); runs agros-boot's `boot-menu` and `splash-theme` now
+  that GRUB is set up (agros-boot's own install runs before `/boot/grub` exists, and the `grubcfg` and `plymouthcfg`
+  steps set CachyOS's after it); removes CachyOS's unused `remove-nvidia`; and last, copies `caelestia-greeter`'s greetd
+  config into place and enables greetd (CachyOS's `dmcheck` only enables greetd for `noctalia-greeter`, so without
+  this AgrOS would boot to a text login). It also names the first snapshot "Fresh AgrOS Installation", and has the
+  btrfs step that takes it (after this one) remake GRUB's menu, so the snapshot is in it from the first boot.
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
   firmware's boot entry and GRUB's folder `EFI/AgrOS`.
 - Removes `packagechooser@desktop`, and fails if it's still there.
+- GRUB only, with no bootloader page (AgrOS's hidden boot menu, its theme and the snapshots in it are GRUB's): removes
+  `packagechooser@bootloader`, whose choice (Limine by default) the rest of the installer reads. So the `bootloader`
+  step is set to GRUB (`efiBootLoader: "grub"`, its `efiBootLoaderVar` removed: with it and no page, no bootloader was
+  installed), `pacstrap` and `grubcfg` (their `main.py`) take GRUB when nothing was chosen, and the partition page
+  starts on GRUB's settings (`partition.conf`: the boot partition at `/boot/efi`, 512 MB, as CachyOS's GRUB override
+  has it). Fails if any of these didn't apply.
 
 ### The branding
 
@@ -163,8 +177,6 @@ as the partition names, from the palette and not the stylesheet.
 | `logo.png`, `icon.png`, `welcome.png` | The logo, the window icon and the welcome page's picture |
 | `*.svg` | The check mark, drop-down arrow and tree branches the stylesheet uses |
 
-The bootloader pictures on the bootloader page are JPEG XL, which is why `kimageformats` is in the live packages.
-
 ## How the [agros] repo fits in
 
 The ISO builds nothing of AgrOS's itself. Everything AgrOS comes from the `[agros]` repo
@@ -176,9 +188,12 @@ GitHub Pages, signed with AgrOS's key:
   installed system gets `agros-desktop` and everything it pulls in.
 - **The installer.** The CI rebuilds CachyOS's `cachyos-calamares` PKGBUILD against today's libraries. CachyOS's own
   build was made for Boost 1.91 and didn't start once Arch moved to 1.92. The rebuild's `pkgrel` is CachyOS's plus
-  `.4`, so pacman prefers it, and it carries small fixes for AgrOS's dark theme: the partition names in the theme's
+  `.5`; the ISO's package list names it `agros/cachyos-calamares-next` (pacman takes a package from the first repo
+  that has it, `[cachyos]`, not the newest), and it carries small fixes for AgrOS's dark theme: the partition names in the theme's
   text colours, the package list's highlight cleared on a click on no row, and the language list's English names
-  readable on the highlighted row. `calamares-online.sh` installs it from `[agros]` each time the installer starts,
+  readable on the highlighted row; and GRUB only: where its compiled modules read the bootloader page's choice (the
+  ZFS pool's GRUB compatibility, the partition page's GRUB settings, its BIOS hint, the boot partition on erase-disk),
+  GRUB, as `agros-calamares-config` does for the Python ones. `calamares-online.sh` installs it from `[agros]` each time the installer starts,
   so an ISO picks up a newer rebuild without being built again.
 
 So the repo has to be published before you build: the build's pacman reads it, and so does the installer.
