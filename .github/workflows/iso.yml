@@ -102,7 +102,7 @@ jobs:
           runuser -u builder -- env SF_USER="$SF_USER" SF_PROJECT="$SF_PROJECT" SF_API_KEY="$SF_API_KEY" \
             ./upload-iso.sh --check
           runuser -u builder -- env SF_USER="$SF_USER" SF_PROJECT="$SF_PROJECT" SF_API_KEY="$SF_API_KEY" \
-            ./buildiso.sh -p desktop -v -w -a -u
+            ./buildiso.sh -p desktop -v -a -u
       - name: Mark it published
         if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
         run: mkdir -p /tmp/published && echo "$GITHUB_SHA" >/tmp/published/commit
