@@ -208,8 +208,11 @@ run_build() {
     cd ${work_dir}/archiso/
     # AgrOS: at the lowest CPU and disk priority, so the desktop stays usable meanwhile, and on half the CPU at most
     # (cpu_share, -a for all of it): every core flat out for the whole build ran the CPU at 86 °C with the fan at full
-    local quota=$(( $(nproc) * ${cpu_share:-50} ))
-    sudo systemd-run --quiet --scope -p CPUQuota=${quota}% nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
+    # (no limit with -a, or with no systemd to set one: GitHub's container)
+    local limit=()
+    [[ ${cpu_share:-50} -lt 100 && -d /run/systemd/system ]] &&
+        limit=(systemd-run --quiet --scope -p CPUQuota=$(( $(nproc) * ${cpu_share:-50} ))%)
+    sudo "${limit[@]}" nice -n 19 ionice -c 3 mkarchiso -v -w ${work_dir} -o "$outFolder/$_profile" ${work_dir}/archiso/
     sudo chown "${SUDO_USER:-$USER}" "$outFolder"  # (under sudo, $USER is root)
 
     cp ${work_dir}/iso/arch/pkglist.x86_64.txt "$outFolder/$_profile/$(gen_iso_fn).pkgs.txt"
