@@ -1,0 +1,113 @@
+name: ISO
+
+# Publishes a new AgrOS ISO on SourceForge (the download in the READMEs) after each change: a push of main here, or
+# AgrOS's packages changed (an agros push, once its CI published them: checked hourly). Built on GitHub, signed with
+# AgrOS's key. Secrets: AGROS_GPG_KEY (the signing key), SF_SSH_KEY (an SSH key only for SourceForge), SF_API_KEY.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Publish even if nothing changed
+        type: boolean
+        default: false
+
+# One at a time; a newer one waits for it (the newest commit is the one published last)
+concurrency:
+  group: iso
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write  # (the cache entry that marks what's published)
+
+env:
+  SF_USER: leagros
+  SF_PROJECT: agros-iso
+
+jobs:
+  iso:
+    runs-on: ubuntu-26.04
+    container:
+      image: archlinux:latest
+      # (privileged: mkarchiso's mounts; the host's /mnt: its big disk, for the 20 GB the build needs)
+      options: --privileged -v /mnt:/mnt
+    steps:
+      - name: What changed
+        id: what
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          busy=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/CrimzoAgra/agros/actions/runs?status=in_progress&per_page=1" | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$')
+          queued=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/CrimzoAgra/agros/actions/runs?status=queued&per_page=1" | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$')
+          # AgrOS's CI still running: its packages aren't published yet (the next hourly run builds with them)
+          if [ "$busy$queued" != 00 ]; then echo "AgrOS's CI is running: the next run publishes"; echo "skip=1" >>"$GITHUB_OUTPUT"; exit 0; fi
+          # The packages' names and versions in AgrOS's repo (each agros push changes them)
+          pkgs=$(curl -fsSL https://crimzoagra.github.io/agros/x86_64/agros.db | bsdtar -tf - | grep '/$' | sort | sha256sum | cut -c1-16)
+          echo "key=iso-published-$GITHUB_SHA-$pkgs" >>"$GITHUB_OUTPUT"
+      - name: Already published?
+        id: done
+        if: steps.what.outputs.skip != '1' && !inputs.force
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/published
+          key: ${{ steps.what.outputs.key }}
+          lookup-only: true
+      - name: Build tools, and CachyOS's and AgrOS's keys
+        if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+        run: |
+          df -h / /mnt
+          # (as in agros's CI: a machine id, and no kernel-modules hook with no systemd running)
+          systemd-machine-id-setup >/dev/null
+          mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/36-systemd-modules-load.hook
+          sed -i 's/^#*DownloadUser.*/#DownloadUser = alpm/' /etc/pacman.conf
+          pacman-key --init
+          pacman -Syu --noconfirm --needed archiso mkinitcpio-archiso git squashfs-tools grub sudo rsync openssh gnupg
+          m=https://mirror.cachyos.org/repo/x86_64/cachyos
+          curl -fsSL -o /tmp/keyring.pkg "$m/$(curl -fsSL "$m/" | grep -o 'cachyos-keyring-[^"]*\.pkg\.tar\.zst' | sort -V | tail -1)"
+          mkdir /tmp/k && bsdtar -xf /tmp/keyring.pkg -C /tmp/k
+          pacman-key --add /tmp/k/usr/share/pacman/keyrings/cachyos.gpg
+          pacman-key --lsign-key F3B607488DB35A47
+      - uses: actions/checkout@v7
+        if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+      - name: The builder, its signing key and SourceForge key
+        if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+        env:
+          AGROS_GPG_KEY: ${{ secrets.AGROS_GPG_KEY }}
+          SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
+        run: |
+          [ -n "$AGROS_GPG_KEY" ] && [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the AGROS_GPG_KEY and SF_SSH_KEY secrets"; exit 1; }
+          pacman-key --add agros.asc
+          pacman-key --lsign-key BFE9289F7759E521AE60CFCD23B6096B42D05E1E
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/builder
+          echo "$AGROS_GPG_KEY" | runuser -u builder -- gpg --batch --import
+          install -d -m700 -o builder -g builder /home/builder/.ssh
+          printf '%s\n' "$SF_SSH_KEY" | install -m600 -o builder -g builder /dev/stdin /home/builder/.ssh/id_ed25519
+          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' |
+            install -m644 -o builder -g builder /dev/stdin /home/builder/.ssh/known_hosts
+          # (on the big disk)
+          cp -a . /mnt/agros-iso && chown -R builder: /mnt/agros-iso
+      - name: Build and upload
+        if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+        env:
+          SF_API_KEY: ${{ secrets.SF_API_KEY }}
+        working-directory: /mnt/agros-iso
+        run: |
+          runuser -u builder -- env SF_USER="$SF_USER" SF_PROJECT="$SF_PROJECT" SF_API_KEY="$SF_API_KEY" \
+            ./upload-iso.sh --check
+          runuser -u builder -- env SF_USER="$SF_USER" SF_PROJECT="$SF_PROJECT" SF_API_KEY="$SF_API_KEY" \
+            ./buildiso.sh -p desktop -v -w -a -u
+      - name: Mark it published
+        if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+        run: mkdir -p /tmp/published && echo "$GITHUB_SHA" >/tmp/published/commit
+      - if: steps.what.outputs.skip != '1' && steps.done.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/published
+          key: ${{ steps.what.outputs.key }}

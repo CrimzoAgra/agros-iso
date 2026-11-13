@@ -20,7 +20,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `util-msg.sh` | Coloured messages and `import` |
 | `upload-iso.sh` | Uploads a built ISO, with its `.sha256`, `.sig` and `.pkgs.txt`, to SourceForge (`buildiso.sh -u`, or by hand): see [Publishing the ISO](../manual/03-building.md#publishing-the-iso) |
 | `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
-| `publish/` (`agros-iso-publish`, its service and timer, `install.sh`), `publish-iso.sh` | Publishes a new ISO by itself after each change on GitHub (agros-iso's `main`, or AgrOS's packages once CI passed): a root service builds GitHub's `main` in its own copy (`/var/lib/agros-iso-publish`) and uploads as you; `publish-iso.sh` checks now. See [Published by itself](../manual/03-building.md#published-by-itself) |
+| `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main`, or AgrOS's packages changed (checked hourly, after agros's CI); built, signed and uploaded there. See [Published by itself](../manual/03-building.md#published-by-itself) |
 | `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
 | `lddd.sh` | CachyOS's check for binaries with missing libraries |
 | `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with xz, file permissions |

@@ -71,8 +71,8 @@ gpg --verify agros-desktop-linux-YYMMDD.iso.sig agros-desktop-linux-YYMMDD.iso
 ## Publishing the ISO
 
 `upload-iso.sh` puts an ISO on [SourceForge](https://sourceforge.net), where people can download it, as other distros
-do (GitHub takes at most 2 GB a file; the ISO is about 3.7). Once it's set up, **every change on GitHub publishes a new
-ISO by itself** (below); `upload-iso.sh` also works on its own.
+do (GitHub takes at most 2 GB a file; the ISO is about 3.7). Once it's set up, **GitHub publishes a new ISO by itself after each
+change** (below); `upload-iso.sh` also works on its own.
 
 ### Setting it up, once
 
@@ -100,24 +100,17 @@ ISO by itself** (below); `upload-iso.sh` also works on its own.
 5. Install `rsync` (`sudo pacman -S rsync`). It shows the progress and resumes a stopped upload. Without it the script
    uses `scp`, which needs the folder (`SF_FOLDER`) to exist in the project's Files already.
 6. Check it: `./upload-iso.sh --check` connects with your key and says `OK`, or what's wrong.
-7. Turn on automatic publishing on this PC: `sudo ./publish/install.sh` (once; again after changing `publish/`).
+7. For GitHub to publish by itself, add the secrets below in agros-iso's **Settings > Secrets and variables >
+   Actions**: `AGROS_GPG_KEY` (the signing key, `gpg --armor --export-secret-keys`), `SF_API_KEY`, and `SF_SSH_KEY`, a
+   private SSH key used only for this, whose public key is in SourceForge's SSH Settings as in step 2.
 
 ### Published by itself
 
-Every 15 minutes a system timer (`agros-iso-publish.timer`) checks GitHub. When this repo's `main` or AgrOS's
-packages changed (an agros push, once its CI passed and published them), it publishes a new ISO. You don't need to
-watch it or push in any order:
-
-1. it waits while AgrOS's CI is still running, so the ISO never has packages older than what's on GitHub;
-2. it checks the SourceForge settings and key (`upload-iso.sh --check`), so a mistake shows before the build;
-3. it builds, as root and at low priority, exactly what's on GitHub's `main`, in a copy of its own
-   (`/var/lib/agros-iso-publish`). Nothing from your clone runs as root, and what you haven't pushed isn't in it.
-   It takes about 30 minutes, and doesn't start on battery;
-4. it uploads the ISO as you (`buildiso.sh -u`: your SSH key, gpg key and `upload.conf`).
-
-A notification says when it starts, when it's published, and when it failed and why. A failed commit is tried again
-after 6 hours. `./publish-iso.sh` starts a check now (also retrying a failed commit) and shows its log; the log is
-always in `journalctl -u agros-iso-publish`.
+GitHub builds and publishes the ISO (`.github/workflows/iso.yml`), with no part on your PC. A new ISO is published
+after each push of `main` here, and after AgrOS's packages change (an agros push, once its CI published them: checked
+every hour). It waits while AgrOS's CI is still running, so the ISO never has older packages than what's on GitHub,
+and it skips a commit and package set that's already published. Each run is in the repo's **Actions** tab; **Run
+workflow** there publishes now (*force* even if nothing changed). GitHub emails you when one fails.
 
 ### Uploading
 

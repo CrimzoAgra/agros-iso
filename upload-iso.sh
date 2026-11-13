@@ -3,7 +3,7 @@
 # Uploads a built ISO, with its .sha256, .sig and .pkgs.txt, to SourceForge's file release system.
 #
 #   ./upload-iso.sh [--dry-run] [iso]
-#   ./upload-iso.sh --check      the settings and the SSH key work (publish-iso.sh, before its build)
+#   ./upload-iso.sh --check      the settings and the SSH key work (the ISO workflow, before its build)
 #
 # Without an ISO it takes the newest in out/desktop. Settings come from the environment or from
 # ~/.config/agros-iso/upload.conf (the environment wins):
