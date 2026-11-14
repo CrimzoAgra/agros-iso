@@ -8,11 +8,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
-export LC_MESSAGES=C
-export LANG=C
-
 disable_colors(){
-    unset ALL_OFF BOLD BLUE GREEN RED YELLOW
+    # (empty, not unset: upload-iso.sh and testiso.sh source this under set -u)
+    ALL_OFF='' BOLD='' BLUE='' GREEN='' RED='' YELLOW=''
 }
 
 enable_colors(){
@@ -41,11 +39,6 @@ else
     disable_colors
 fi
 
-plain() {
-    local mesg=$1; shift
-    printf "${BOLD}    ${mesg}${ALL_OFF}\n" "$@" >&2
-}
-
 msg() {
     local mesg=$1; shift
     printf "${GREEN}==>${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
@@ -61,43 +54,32 @@ info() {
     printf "${YELLOW} -->${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
 }
 
+# (on GitHub, also an annotation on the run: ::warning:: and ::error:: at a line's start)
 warning() {
     local mesg=$1; shift
-    printf "${YELLOW}==> WARNING:${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
+    printf "${GITHUB_ACTIONS:+::warning::}${YELLOW}==> WARNING:${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
 }
 
 error() {
     local mesg=$1; shift
-    printf "${RED}==> ERROR:${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
-}
-
-stat_busy() {
-    local mesg=$1; shift
-    printf "${GREEN}==>${ALL_OFF}${BOLD} ${mesg}...${ALL_OFF}" >&2
-}
-
-stat_done() {
-    printf "${BOLD}done${ALL_OFF}\n" >&2
+    printf "${GITHUB_ACTIONS:+::error::}${RED}==> ERROR:${ALL_OFF}${BOLD} ${mesg}${ALL_OFF}\n" "$@" >&2
 }
 
 cleanup() {
-    exit ${1:-0}
-}
-
-abort() {
-    error 'Aborting...'
-    cleanup 255
+    exit "${1:-0}"
 }
 
 die() {
     (( $# )) && error "$@"
+    # shellcheck disable=SC2034
+    died=1  # (said what failed: buildiso.sh's exit trap doesn't add "unknown error")
     cleanup 255
 }
 
 import(){
     if [[ -r $1 ]]; then
-        source $1
+        source "$1"
     else
-        die "Could not import $1"
+        die "Could not import %s" "$1"
     fi
 }

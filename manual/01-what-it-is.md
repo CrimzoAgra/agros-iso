@@ -11,7 +11,8 @@ CachyOS's live ISO, set up the way CachyOS sets up its own editions:
 The installer downloads every package during the install, so the ISO stays small and the installed system starts out
 up to date. It needs an internet connection for that.
 
-There are no ready-made downloads: you build the ISO yourself on an Arch or CachyOS machine. The next chapters show
-how.
+A new ISO is published after each change to what goes into it, or to AgrOS's packages: [download the
+latest](https://sourceforge.net/projects/agros-iso/files/latest/download) (see [Download](../README.md#download)). To
+build one yourself on an Arch or CachyOS machine, read on.
 
 Next: [What you need](02-requirements.md)

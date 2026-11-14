@@ -17,11 +17,11 @@ built afterwards.
 
 ## Download
 
-**[Download the latest AgrOS ISO](https://sourceforge.net/projects/agros-iso/files/latest/download)** (about 3.7 GB,
+**[Download the latest AgrOS ISO](https://sourceforge.net/projects/agros-iso/files/latest/download)** (about 3.6 GB,
 from SourceForge). Every ISO, with its `.sha256` checksum and `.sig` signature:
 [sourceforge.net/projects/agros-iso/files/iso](https://sourceforge.net/projects/agros-iso/files/iso/). A new one is
-published by itself after each change to this repo or to AgrOS's packages. To check a download, see
-[Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
+published by itself after each change to what goes into it here (not a change to the docs alone) or to AgrOS's packages.
+To check a download, see [Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
 
 ## The AgrOS ISO Manual
 
@@ -45,7 +45,9 @@ published by itself after each change to this repo or to AgrOS's packages. To ch
 
 ## License
 
-The AgrOS ISO is released under the [GPL-3.0](LICENSE). It builds on
+The AgrOS ISO is released under the [GPL-3.0](LICENSE), as CachyOS's Live ISO is. The build scripts that come from
+CachyOS (`buildiso.sh`, `util.sh`, `util-iso.sh`, `util-iso-mount.sh`, `util-msg.sh`) keep their own headers, which say
+GPL version 2, with no "or any later version". It builds on
 [CachyOS's Live ISO](https://github.com/CachyOS/CachyOS-Live-ISO), Arch's
 [archiso](https://gitlab.archlinux.org/archlinux/archiso) and [Calamares](https://github.com/calamares/calamares); see
 [credits](docs/how-it-works.md#credits).

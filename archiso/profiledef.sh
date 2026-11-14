@@ -10,8 +10,6 @@ install_dir="arch"
 buildmodes=('iso')
 ## GRUB
 bootmodes=('bios.syslinux' 'uefi.grub')
-## systemd-boot
-#bootmodes=('bios.syslinux' 'uefi.systemd-boot')
 arch="x86_64"
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
@@ -24,10 +22,8 @@ file_permissions=(
   ["/etc/polkit-1/rules.d"]="0:0:750"
   ["/etc/sudoers.d"]="0:0:750"
   ["/etc/sudoers.d/g_wheel"]="0:0:440"
-  ["/root/.automated_script.sh"]="0:0:755"
   ["/root/.gnupg"]="0:0:700"
   ["/usr/local/bin/calamares-online.sh"]="0:0:755"
-  ["/usr/local/bin/remove-nvidia"]="0:0:755"
   ["/usr/local/bin/pkexec-wrapper"]="0:0:755"
   ["/usr/local/bin/agros-calamares-config"]="0:0:755"
   ["/usr/local/bin/live-session-menu"]="0:0:755"

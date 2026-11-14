@@ -12,7 +12,6 @@ esac
 exec pkexec env \
     DISPLAY="$DISPLAY" \
     HOME="$HOME" \
-    KDE_SESSION_VERSION="$KDE_SESSION_VERSION" \
     WAYLAND_DISPLAY="$wl" \
     XAUTHORITY="$XAUTHORITY" \
     XDG_CURRENT_DESKTOP="$XDG_CURRENT_DESKTOP" \
@@ -21,4 +20,3 @@ exec pkexec env \
     QT_QPA_PLATFORMTHEME="$QT_QPA_PLATFORMTHEME" \
     QT_QUICK_BACKEND=software \
     dbus-launch "$@"
-#    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
