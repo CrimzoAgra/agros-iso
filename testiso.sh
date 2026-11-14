@@ -9,24 +9,28 @@
 # Run it as yourself (no sudo). It won't touch a VM that's running: power it off first.
 set -euo pipefail
 src_dir=$(dirname "$(readlink -f "$0")")
+# (the build's messages and helpers: msg, die, newest_iso)
+source "$src_dir/util-msg.sh"
+source "$src_dir/util.sh"
 vmx=$(realpath -m "${AGROS_VM:-$HOME/vmware/AgrOS-test/AgrOS-test.vmx}")  # (vmrun list gives full paths)
 dir=${vmx%/*}
 fresh=
 case ${1:-} in
     --fresh) fresh=1 ;;
     "" | desktop) ;;  # (the old usage, the profile's name: desktop is the only one)
-    *) echo "Usage: ./testiso.sh [--fresh]"; exit 1 ;;
+    *) die "Usage: ./testiso.sh [--fresh]" ;;
 esac
-command -v vmrun >/dev/null || { echo "VMware Workstation isn't installed (vmrun not found)"; exit 1; }
-iso=$(ls -t "$src_dir"/out/desktop/*.iso 2>/dev/null | head -1)
-[[ -n $iso ]] || { echo "No ISO in out/desktop/: build one first (sudo ./buildiso.sh -p desktop -v -w)"; exit 1; }
-if vmrun list | grep -qxF "$vmx"; then
-    echo "The VM is running: power it off first (an install in it would be cut off)"
-    exit 1
+command -v vmrun >/dev/null || die "VMware Workstation isn't installed (vmrun not found)"
+iso=$(newest_iso) || true
+[[ -n $iso ]] || die "No ISO in %s: build one first (sudo ./buildiso.sh -p desktop -w)" "$(iso_out_dir)"
+# (the list taken first: grep -q stops at the match, and under pipefail vmrun's broken pipe failed the check)
+running=$(vmrun list) || die "vmrun list failed: is VMware Workstation set up?"
+if grep -qxF "$vmx" <<<"$running"; then
+    die "The VM is running: power it off first (an install in it would be cut off)"
 fi
 
 if [[ ! -f $vmx ]]; then
-    echo "Making the VM $vmx"
+    msg "Making the VM %s" "$vmx"
     mkdir -p "$dir"
     vmware-vdiskmanager -c -s 64GB -a lsilogic -t 0 "$dir/disk.vmdk" >/dev/null
     cat >"$vmx" <<VMX
@@ -65,7 +69,7 @@ sound.autoDetect = "TRUE"
 tools.syncTime = "FALSE"
 VMX
 elif [[ -n $fresh ]]; then
-    echo "A new empty disk, and the firmware's boot entries cleared"
+    msg "A new empty disk, and the firmware's boot entries cleared"
     rm -f "$dir/disk.vmdk" "$dir/nvram"
     vmware-vdiskmanager -c -s 64GB -a lsilogic -t 0 "$dir/disk.vmdk" >/dev/null
 fi
@@ -73,6 +77,6 @@ fi
 # The ISO in the DVD drive, connected at power-on
 sed -i -e '/^sata0:1\.fileName = /d' -e '/^sata0:1\.startConnected = /d' "$vmx"
 printf 'sata0:1.fileName = "%s"\nsata0:1.startConnected = "TRUE"\n' "$iso" >>"$vmx"
-echo "Starting it with ${iso##*/}"
+msg "Starting it with %s" "${iso##*/}"
 # (not with the editor's or Claude's variables: an Electron one left in made apps started from it misbehave)
 env -u ELECTRON_RUN_AS_NODE vmrun -T ws start "$vmx" gui

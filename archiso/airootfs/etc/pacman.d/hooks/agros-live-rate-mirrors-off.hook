@@ -1,0 +1,14 @@
+# remove from airootfs!
+# AgrOS: no mirror ranking on the live system. Turned off once the package's own install has enabled the timer: a mask
+# in airootfs made that fail ("Failed to enable unit: ... is masked") in the build's log
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = cachyos-rate-mirrors
+
+[Action]
+Description = Disabling cachyos-rate-mirrors.timer for the live environment...
+When = PostTransaction
+Depends = systemd
+Exec = /usr/bin/systemctl disable cachyos-rate-mirrors.timer

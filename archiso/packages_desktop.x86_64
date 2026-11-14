@@ -69,7 +69,6 @@ lftp
 libfido2
 libusb-compat
 libwnck3
-linux-atm
 linux-cachyos-lts
 linux-cachyos-lts-zfs
 linux-cachyos-lts-nvidia-open
@@ -194,12 +193,15 @@ greetd
 greetd-agreety
 foot
 thunar
+agros-thunar-usage
 librewolf
 polkit-gnome
 gnome-keyring
 adw-gtk-theme
 papirus-icon-theme
 bibata-cursor-theme-bin
+qtengine
+darkly-bin
 ttf-material-symbols-variable
 ttf-rubik-vf
 ttf-jetbrains-mono-nerd

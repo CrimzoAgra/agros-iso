@@ -5,7 +5,7 @@
 The ISO boots with GRUB on UEFI and with syslinux on BIOS. Both menus say AgrOS, and the BIOS menu has the AgrOS
 banner behind it.
 
-On UEFI (GRUB, starts the first entry after 10 seconds):
+On UEFI (GRUB, starts **AgrOS** after 10 seconds; the menu's first line is only the "Welcome to AgrOS" title):
 
 - **AgrOS**: the live session on CachyOS's current kernel. The default.
 - **AgrOS LTS Kernel**: the same on CachyOS's LTS kernel. Try it if the default doesn't boot.
@@ -16,8 +16,12 @@ On UEFI (GRUB, starts the first entry after 10 seconds):
 On BIOS (syslinux, starts the first entry after 15 seconds):
 
 - **AgrOS default**: the live session on the LTS kernel.
+- **AgrOS current kernel**: the same on CachyOS's current kernel, the UEFI menu's default.
 - **AgrOS Fallback (nomodeset)**: as the Legacy Hardware entry above.
 - Boot existing OS, Memtest86+, Hardware Information (HDT), reboot and power off.
+
+The live session's entries boot with no text on the screen (the kernel's and systemd's messages hidden, as on an
+installed AgrOS). The Legacy Hardware and Fallback entries show it, so you can see where a boot stops.
 
 ## The live session
 
@@ -45,6 +49,9 @@ It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 - It suggests a computer name starting with `agros-`, names the firmware's boot entry `AgrOS`, and sets up AgrOS's
   login screen on the new system.
 
-It needs an internet connection, because it downloads the packages.
+It needs an internet connection, because it downloads the packages. If you aren't connected when it starts (on Wi-Fi,
+at the first login), it says "Connect to the internet to install": connect, and it goes on by itself within a few
+seconds. It waits up to 5 minutes; after that it stops with "The installer couldn't be set up", and you open it again
+with **Install AgrOS**.
 
 Next: [Troubleshooting](06-troubleshooting.md)
