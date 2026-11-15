@@ -7,7 +7,6 @@ iso_publisher="AgrOS <https://github.com/CrimzoAgra/agros>"
 iso_application="AgrOS Live/Install (based on CachyOS)"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="arch"
-buildmodes=('iso')
 ## GRUB
 bootmodes=('bios.syslinux' 'uefi.grub')
 arch="x86_64"

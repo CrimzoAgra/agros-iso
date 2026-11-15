@@ -45,6 +45,7 @@ f2fs-tools
 fakeroot
 fatresize
 gcc
+ghostty-terminfo
 gpart
 gparted
 gptfdisk
@@ -55,13 +56,14 @@ hwinfo
 hyperv
 imwheel
 inetutils
+inotify-tools
 intel-ucode
 inxi
 irssi
 iw
 iwd
-inotify-tools
 jfsutils
+kmscon-terminfo
 kxkb2locale1
 ldns
 less
@@ -69,10 +71,10 @@ lftp
 libfido2
 libusb-compat
 libwnck3
-linux-cachyos-lts
-linux-cachyos-lts-zfs
-linux-cachyos-lts-nvidia-open
 linux-cachyos
+linux-cachyos-lts
+linux-cachyos-lts-nvidia-open
+linux-cachyos-lts-zfs
 linux-cachyos-nvidia-open
 linux-cachyos-zfs
 linux-firmware
