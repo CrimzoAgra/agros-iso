@@ -34,9 +34,17 @@ script:
       rm -f /etc/pacman.conf.pacnew /etc/resolv.conf.pacnew /etc/pacman.d/*mirrorlist.pacnew
       # The snapshots the install's own package runs made (snap-pac's pre/post pairs): the boot menu's snapshot list
       # starts with the installation's own snapshot alone (taken after this step: the btrfs step below adds it to the menu)
-      n=$(snapper --no-dbus -c root --csvout list --columns number,description 2>/dev/null |
-        awk -F, 'NR > 1 && $1 > 0 && $2 !~ /Installation/ {print $1}')
-      [ -z "$n" ] || snapper --no-dbus -c root delete $n || echo "AgrOS: the install's snapshots left as they were"
+      # (no dollar signs in this command: Calamares reads one followed by a name as its own variable, and stops the
+      # install on one it doesn't know; it has no way to pass a plain one to the shell)
+      # (plain numbers only: not the header, the current state 0, or a number with a marker after it. No snapshots
+      # folder: not btrfs, nothing to do)
+      if snapper --no-dbus -c root --csvout list --columns number,description >/tmp/agros-snapshots 2>/dev/null; then
+        grep -v Installation /tmp/agros-snapshots | cut -d, -f1 | grep -x '[1-9][0-9]*' |
+          xargs -r snapper --no-dbus -c root delete || echo "AgrOS: the install's snapshots left as they were"
+      elif [ -d /.snapshots ]; then
+        echo "AgrOS: the install's snapshots not listed, left as they were"
+      fi
+      rm -f /tmp/agros-snapshots
       # AgrOS's boot menu (hidden, 1 s, quiet, AgrOS's GRUB theme) and fast splash, now that GRUB is set up: agros-boot's own install ran
       # before /boot/grub existed (boot-menu left it for now), and the installer's grubcfg and plymouthcfg steps set CachyOS's after it.
       # boot-menu keeps CachyOS's settings as grub.agros-orig and notes its run (agros-boot's upgrades don't run it again unchanged);
@@ -53,6 +61,11 @@ script:
 i18n:
   name: "Configuring the AgrOS login screen..."
 CONF
+# No dollar sign at all in its commands: Calamares reads $name as its own variable (one it doesn't know failed the whole
+# install, after the disk was wiped), turns $$ into \$, and tracks quotes without knowing comments, so which ones it
+# reads depends on the apostrophes before them. (buildiso.sh checks the same, so such an ISO isn't built)
+! grep -n '\$' "$mods/shellprocess_greetd.conf" ||
+    fail "a dollar sign Calamares would read as its own in $mods/shellprocess_greetd.conf"
 # AgrOS's branding (/usr/share/calamares/branding/agros: its name, logo, colours, its own step bar and stylesheet in
 # the desktop's style); AgrOS's name in the install steps that say CachyOS's, and in the computer name it suggests
 sed -i 's/^branding: .*/branding: agros/' "$settings"
@@ -114,6 +127,28 @@ if ! grep -q '^ *- shellprocess@greetd$' "$settings"; then
 fi
 grep -q '^ *- shellprocess@greetd$' "$settings" && grep -q '^- id: *greetd$' "$settings" ||
     fail "the installer's greetd step couldn't be set up ($settings)"
+# The upstream gate for the install (agros-gate-install, on the live system: the ISO's own copy of Hyprland and its
+# libraries installed when the newest the install downloaded isn't approved yet), after the packages, before the step
+# above. ${ROOT}: one of Calamares's own variables, the installed system's root. An hour, as CachyOS's own steps have:
+# its pacman is never cut off (a set half installed). Its failure, or a timeout, never the
+# install's ("-": the install goes on with the newest, held by its updates until approved). What it did: in the new
+# system's /var/log/agros-gate-install.log (it writes that itself) and the live session's installer log (verbose)
+cat >"$mods/shellprocess_agrosgate.conf" <<'CONF'
+---
+dontChroot: true
+timeout: 3600
+script:
+ - command: "-/usr/local/bin/agros-gate-install ${ROOT}"
+   verbose: true
+i18n:
+  name: "Checking Hyprland against AgrOS's approved versions..."
+CONF
+grep -q '^- id: *agrosgate$' "$settings" ||
+    sed -i 's/^- id: *greetd$/- id:       agrosgate\n  module:   shellprocess\n  config:   shellprocess_agrosgate.conf\n\n&/' "$settings"
+grep -q '^ *- shellprocess@agrosgate$' "$settings" ||
+    sed -i 's/^\( *\)- shellprocess@greetd$/\1- shellprocess@agrosgate\n&/' "$settings"
+grep -q '^ *- shellprocess@agrosgate$' "$settings" && grep -q '^- id: *agrosgate$' "$settings" ||
+    fail "the installer's upstream gate step couldn't be set up ($settings)"
 # Any other Python step reading the bootloader page's choice (none: no such page) than those that cope with it
 others=$(grep -rl 'packagechooser_bootloader' "$pymods" --include=*.py | grep -v '/\(pacstrap\|grubcfg\|chwd\)/main\.py$' || true)
 [[ -z $others ]] || fail "installer steps reading the bootloader choice: $others"

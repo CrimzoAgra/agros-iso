@@ -26,5 +26,6 @@ file_permissions=(
   ["/usr/local/bin/calamares-online.sh"]="0:0:755"
   ["/usr/local/bin/pkexec-wrapper"]="0:0:755"
   ["/usr/local/bin/agros-calamares-config"]="0:0:755"
+  ["/usr/local/bin/agros-gate-install"]="0:0:755"
   ["/usr/local/bin/live-session-menu"]="0:0:755"
 )

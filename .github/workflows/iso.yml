@@ -2,7 +2,11 @@ name: ISO
 
 # Publishes a new AgrOS ISO on SourceForge (the download in the READMEs) after each change: a push of main here, or
 # AgrOS's packages changed (agros's CI starts this once it has published them). Built on GitHub, signed with AgrOS's
-# key. Secrets: AGROS_GPG_KEY (the signing key), SF_SSH_KEY (an SSH key only for SourceForge), SF_API_KEY.
+# key. Secrets: AGROS_GPG_KEY (the signing key), SF_SSH_KEY (an SSH key only for SourceForge), SF_API_KEY. Three jobs:
+# sourceforge checks SourceForge's key first; iso, the build, privileged, runs thousands of packages' install scripts as
+# root (Arch's, CachyOS's, AUR builds'), so it has no secret; publish signs and uploads with the secrets, in a container
+# of its own that runs only official Arch packages' scripts (its tools and their upgrade: the same trust gnupg itself,
+# which signs, needs), none of CachyOS's or the AUR's, and isn't privileged.
 on:
   push:
     branches: [main]
@@ -40,7 +44,30 @@ env:
   SF_PROJECT: agros-iso
 
 jobs:
+  # SourceForge reached with its key, before the build (only that key here: nothing else runs)
+  sourceforge:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: SourceForge's key works
+        env:
+          SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
+        run: |
+          [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the SF_SSH_KEY secret"; exit 1; }
+          install -d -m700 ~/.ssh
+          printf '%s\n' "$SF_SSH_KEY" | install -m600 /dev/stdin ~/.ssh/id_ed25519
+          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' >~/.ssh/known_hosts
+          ./upload-iso.sh --check
+
   iso:
+    needs: sourceforge
+    outputs:
+      built: ${{ steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true' }}
+      key: ${{ steps.what.outputs.key }}
     runs-on: ubuntu-26.04
     container:
       image: archlinux:latest
@@ -62,7 +89,10 @@ jobs:
           sed -i 's/^#*DownloadUser.*/#DownloadUser = alpm/' /etc/pacman.conf
           pacman-key --init
           pacman -Syu --noconfirm --needed git
+      # (no token left in .git/config: the build's copy of this folder is readable by every package's install script)
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: What changed
         id: what
         env:
@@ -138,7 +168,7 @@ jobs:
         run: |
           df -h /
           # (what the build itself needs, buildiso.sh installs: its list is in util.sh's check_requirements)
-          pacman -Syu --noconfirm --needed git sudo rsync openssh gnupg
+          pacman -Syu --noconfirm --needed git sudo
           m=https://mirror.cachyos.org/repo/x86_64/cachyos
           k=$(curl -fsSL --retry 3 --retry-all-errors "$m/" | grep -o 'cachyos-keyring-[^"]*\.pkg\.tar\.zst' | sort -V | tail -1) || true
           [ -n "$k" ] || { echo "::error::No cachyos-keyring package in CachyOS's repo listing ($m/)"; exit 1; }
@@ -146,49 +176,162 @@ jobs:
           mkdir /tmp/k && bsdtar -xf /tmp/keyring.pkg -C /tmp/k
           pacman-key --add /tmp/k/usr/share/pacman/keyrings/cachyos.gpg
           pacman-key --lsign-key 882DCFE48E2051D48E2562ABF3B607488DB35A47
-      - name: The builder, its signing key and SourceForge key
+      - name: The builder
         if: steps.done.outputs.cache-hit != 'true'
-        env:
-          AGROS_GPG_KEY: ${{ secrets.AGROS_GPG_KEY }}
-          SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
         run: |
-          [ -n "$AGROS_GPG_KEY" ] && [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the AGROS_GPG_KEY and SF_SSH_KEY secrets"; exit 1; }
-          # (its fingerprint read from agros.asc, the one place it's named: util.sh's key_fpr, as the build signs with)
+          # (AgrOS's key in pacman's keyring, its fingerprint read from agros.asc, the one place it's named: util.sh's
+          # key_fpr. Only the public key: this job signs nothing, the publish job does)
           pacman-key --add agros.asc
           fpr=$(. ./util.sh && key_fpr agros.asc) && [ -n "$fpr" ] || { echo "::error::No key in agros.asc"; exit 1; }
           pacman-key --lsign-key "$fpr"
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/builder
-          echo "$AGROS_GPG_KEY" | runuser -u builder -- gpg --batch --import
-          install -d -m700 -o builder -g builder /home/builder/.ssh
-          printf '%s\n' "$SF_SSH_KEY" | install -m600 -o builder -g builder /dev/stdin /home/builder/.ssh/id_ed25519
-          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' |
-            install -m644 -o builder -g builder /dev/stdin /home/builder/.ssh/known_hosts
           cp -a . /home/builder/agros-iso && chown -R builder: /home/builder/agros-iso
-      - name: Build and upload
+      # The upstream gate (util.sh's gate_waits): a Hyprland AgrOS's CI hasn't approved yet isn't built in. A wait, not an
+      # error: this run ends here, said, with nothing built or published (no failure email); agros's next CI run approves
+      # it and starts this again. A list that can't be fetched or read is an error, as in the build
+      - name: Upstream gate
+        id: gate
         if: steps.done.outputs.cache-hit != 'true'
-        env:
-          SF_API_KEY: ${{ secrets.SF_API_KEY }}
         working-directory: /home/builder/agros-iso
         run: |
-          as_builder() { runuser -u builder -- env SF_USER="$SF_USER" SF_PROJECT="$SF_PROJECT" SF_API_KEY="$SF_API_KEY" "$@"; }
-          as_builder ./upload-iso.sh --check
-          as_builder ./buildiso.sh -p desktop -a
-          # (the build only warns when it can't sign: --signed, never published unsigned. The newest ISO: the only one)
-          # (tried 3 times: a dropped connection uploads it all again, rather than failing the run and its build. Not
-          # retried when it refuses the ISO, exit 65: unsigned, a bad checksum or another key's signature stay so)
+          waits=$(runuser -u builder -- bash -c 'src_dir=$PWD; . ./util-msg.sh && . ./util.sh && gate_waits')
+          if [ -n "$waits" ]; then
+            echo "::notice::Waits for AgrOS's check, not built: $(paste -sd, <<<"$waits")"
+            echo "held=true" >>"$GITHUB_OUTPUT"
+          fi
+      - name: Build
+        id: build
+        if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true'
+        working-directory: /home/builder/agros-iso
+        # (unsigned: the publish job signs it; AGROS_SIGN_LATER says so instead of a warning on every run. 75: the build's
+        # own gate check found a wait the step above didn't (a mirror updated in between): held, as there)
+        run: |
+          rc=0
+          runuser -u builder -- env AGROS_SIGN_LATER=1 ./buildiso.sh -p desktop -a || rc=$?
+          if [ "$rc" = 75 ]; then
+            echo "::notice::Waits for AgrOS's check (found by the build), not built"
+            echo "held=true" >>"$GITHUB_OUTPUT"
+          elif [ "$rc" != 0 ]; then
+            exit "$rc"
+          fi
+      - if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: iso
+          path: /home/builder/agros-iso/out/desktop/
+          # (the ISO is compressed already; kept a day: the publish job right after, or its re-run)
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: iso
+    if: needs.iso.outputs.built == 'true'
+    # (its own runs listed: Still the newest?)
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-26.04
+    # (not privileged; the only install scripts that run here are the signing and upload tools' own, before the secrets
+    # are in the environment)
+    container:
+      image: archlinux:latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: iso
+          path: out/desktop
+      # (before any secret is in the environment: an upgrade here runs official Arch packages' install scripts. Set up
+      # as the build's: a machine id, no kernel-modules hook with no systemd running, no download user)
+      - name: Pacman, and the signing and upload tools
+        run: |
+          systemd-machine-id-setup >/dev/null
+          mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/36-systemd-modules-load.hook
+          sed -i 's/^#*DownloadUser.*/#DownloadUser = alpm/' /etc/pacman.conf
+          pacman-key --init
+          pacman -Syu --noconfirm --needed gnupg openssh rsync jq
+      - name: The ISO signed
+        env:
+          AGROS_GPG_KEY: ${{ secrets.AGROS_GPG_KEY }}
+        run: |
+          [ -n "$AGROS_GPG_KEY" ] || { echo "::error::Add the AGROS_GPG_KEY secret"; exit 1; }
+          # (the signing key gone when this step ends, signed or not: nothing after it, the actions' own code included,
+          # can read it)
+          trap 'gpgconf --kill all; rm -rf "$(gpgconf --list-dirs homedir)"' EXIT
+          echo "$AGROS_GPG_KEY" | gpg --batch --import
+          # (the build's own signing, util.sh's: AgrOS's key from agros.asc, the .sig beside the ISO; checked at once, as
+          # it only warns when it can't sign)
+          src_dir=$PWD
+          . ./util-msg.sh && . ./util.sh
+          iso=$(newest_iso) && [ -n "$iso" ] || { echo "::error::No ISO in the build's files"; exit 1; }
+          sign_with_key "$iso"
+          verify_agros_sig "$iso" || { echo "::error::AGROS_GPG_KEY didn't sign the ISO (not AgrOS's key, or one with a passphrase?)"; exit 1; }
+      # A re-run ("Re-run failed jobs", later) of an older run's publish: not over a newer run that has already
+      # published (its ISO made the default download, an older one put back over it): a newer run whose Upload step
+      # succeeded, however the run ended after (one that skipped publishing, its ISO already out, or refused itself
+      # here, doesn't count). Not on a first attempt: a newer run is then only waiting its turn, and may never publish.
+      # Can't tell (GitHub's API unreachable): published, what this run is for
+      - name: Still the newest?
+        id: newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          api() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/$1"; }
+          latest=
+          if [ "$ATTEMPT" -gt 1 ]; then
+            newer=$(api "workflows/iso.yml/runs?branch=main&per_page=50" |
+              jq -r --argjson me "$GITHUB_RUN_ID" '.workflow_runs[] | select(.id > $me) | .id') || newer=
+            for run in $newer; do
+              if api "runs/$run/jobs" | jq -e '[.jobs[] | select(.name == "publish") | .steps[] |
+                  select(.name == "Upload" and .conclusion == "success")] | length > 0' >/dev/null; then
+                latest=$run
+                break
+              fi
+            done
+          fi
+          if [ -n "$latest" ]; then
+            echo "::notice::A newer ISO run ($latest) has published since: this older one isn't put back over it"
+            echo "ok=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >>"$GITHUB_OUTPUT"
+          fi
+      - name: Upload
+        if: steps.newest.outputs.ok == 'true'
+        env:
+          SF_API_KEY: ${{ secrets.SF_API_KEY }}
+          SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
+        run: |
+          [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the SF_SSH_KEY secret"; exit 1; }
+          # (the SSH key only for this step, gone when it ends. Root's own folder, not ~: in a container job HOME is
+          # /github/home, and ssh reads root's home from passwd)
+          trap 'rm -f /root/.ssh/id_ed25519' EXIT
+          install -d -m700 /root/.ssh
+          printf '%s\n' "$SF_SSH_KEY" | install -m600 /dev/stdin /root/.ssh/id_ed25519
+          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' >/root/.ssh/known_hosts
+          # (--signed: never published unsigned. The newest ISO: the only one)
+          # (tried 3 times: a dropped connection uploads it all again, rather than failing the run. Not retried when it
+          # refuses the ISO, exit 65: unsigned, a bad checksum or another key's signature stay so)
           for i in 1 2 3; do
-            rc=0; as_builder ./upload-iso.sh --signed || rc=$?
+            rc=0; ./upload-iso.sh --signed || rc=$?
             [ "$rc" = 0 ] && exit 0
             [ "$rc" = 65 ] && exit 65
             [ "$i" = 3 ] || sleep 60
           done
           exit 1
       - name: Mark it published
-        if: steps.done.outputs.cache-hit != 'true'
+        if: steps.newest.outputs.ok == 'true'
         run: mkdir -p /tmp/published && echo "$GITHUB_SHA" >/tmp/published/commit
-      - if: steps.done.outputs.cache-hit != 'true'
+      - if: steps.newest.outputs.ok == 'true'
         uses: actions/cache/save@v6
         with:
           path: /tmp/published
-          key: ${{ steps.what.outputs.key }}
+          key: ${{ needs.iso.outputs.key }}

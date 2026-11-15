@@ -5,7 +5,8 @@
 #   ./upload-iso.sh [-n|--dry-run] [--signed] [iso]
 #   ./upload-iso.sh --check      the settings and the SSH key work (the ISO workflow, before its build)
 # -n, --dry-run shows what would go up, and where, without connecting.
-# It refuses an ISO that doesn't match its .sha256, or whose .sig isn't a good signature by AgrOS's key (agros.asc);
+# It refuses a test build (AGROS_UNGATED: -ungated in its name), an ISO that doesn't match its .sha256, or whose .sig
+# isn't a good signature by AgrOS's key (agros.asc);
 # --signed also refuses one without a .sig (the ISO workflow: never published unsigned). A refusal exits with 65, which
 # no retry changes (any other failure, a dropped connection, may pass the next time).
 #
@@ -80,7 +81,9 @@ fi
 iso=$(readlink -f "$iso")
 dir=${iso%/*} name=${iso##*/}
 
-# Refuse an ISO whose checksum or signature doesn't check out
+# Refuse an ISO whose checksum or signature doesn't check out, or built past the upstream gate (AGROS_UNGATED: a test
+# build, maybe with a Hyprland AgrOS hasn't checked)
+[[ $name != *-ungated.iso ]] || refuse "%s was built with AGROS_UNGATED (a test build): not published" "$name"
 [[ -f $iso.sha256 ]] || refuse "%s.sha256 is missing" "$name"
 msg "Checking %s.sha256..." "$name"
 (cd "$dir" && sha256sum --quiet -c "$name.sha256") || refuse "%s doesn't match its .sha256" "$name"

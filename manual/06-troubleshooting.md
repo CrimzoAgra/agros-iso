@@ -12,6 +12,14 @@ keyring, but gpg failed to sign: usually its passphrase couldn't be asked for (t
 gpg-agent). Unlock the key once in the same terminal, for example `echo test | gpg -u 23B6096B42D05E1E --sign
 >/dev/null`, so gpg-agent has the passphrase, and build again. The ISO and its checksums are fine either way.
 
+**"Not checked by AgrOS's CI yet: ...".** A new Hyprland (or one of its libraries) came out and AgrOS's CI hasn't
+approved it yet. The build waits for that, usually the same day: build again later. For a test build,
+`sudo AGROS_UNGATED=1 ./buildiso.sh ...` (it can't be uploaded).
+
+**"AgrOS's approved upstream versions couldn't be fetched".** The approved list (`agros-approved`, beside the `[agros]`
+repo) can't be reached, or agros's CI hasn't published it yet (the first time: push agros first and let its CI run
+once). Check your connection and `https://crimzoagra.github.io/agros/x86_64/agros-approved`.
+
 **Packages from `[agros]` aren't found.** The ISO's packages come from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`). Check that it's published and that you can reach it.
 

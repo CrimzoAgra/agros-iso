@@ -12,14 +12,18 @@
 # With -r, the way to free the RAM the work folder (about 11 GB) still holds: after a good build kept with it (no -w),
 # and after a stopped one (it was only said after a good build)
 ram_reminder() {
-    if [[ "$build_in_ram" == "true" ]]; then
+    if [[ ${work_fresh:-} == true && -d $work_dir ]]; then
         warning "The work folder is still in RAM: sudo rm -rf %s" "$work_dir"
     fi
 }
 
-# What a stopped build leaves: nothing mounted
+# What a stopped build leaves: nothing mounted, nor its approved list (check_gate's). Never fails: each step runs
+# (set -e is on in the signal traps; a busy mount stopped the rest)
 stopped() {
-    umount_fs
+    umount_fs || true
+    [[ -z ${gate_dir:-} ]] || sudo rm -rf "$gate_dir" || true
+    # (with -r, the RAM folder made but not built in yet, still empty: gone too, not one to free the RAM of)
+    [[ ${work_fresh:-} != true || ! -d ${work_dir:-} ]] || rmdir "$work_dir" 2>/dev/null || true
     ram_reminder
 }
 
@@ -37,7 +41,8 @@ remove_work_dir() {
 # download of the repo): all of archiso/
 copy_profile() {
     local git=(git -C "$src_dir" -c safe.directory="$src_dir") files=() f untracked
-    rm -rf "${work_dir}/archiso"
+    # (sudo: the installer's Hyprland copy in it, opt/agros/gate, is root's)
+    sudo rm -rf "${work_dir}/archiso"
     if [[ $("${git[@]}" rev-parse --show-toplevel 2>/dev/null) == "$src_dir" ]]; then
         while IFS= read -r -d '' f; do
             # (deleted, not git rm'd yet: left out, as it's gone)
@@ -63,9 +68,12 @@ trap_exit() {
 }
 
 # A build that stopped halfway, reported once: die has said why, a failed command (set -e) hasn't
+# (its exit status kept: a cleanup failing (sudo asking again) doesn't turn a wait, 75, into a failure)
 exit_trap() {
+    local rc=$?
     (( ${died:-0} )) || error "An unknown error has occurred. Exiting..."
-    stopped
+    stopped || true
+    exit "$rc"
 }
 
 generate_motd() {
@@ -171,6 +179,9 @@ prepare_profile(){
 
     # (the one profile: buildiso.sh stops on any other before touching anything)
     cp "${work_dir}/archiso/packages_desktop.x86_64" "${work_dir}/archiso/packages.x86_64"
+    # The upstream gate's copy of the ISO's Hyprland and its libraries, for the installer (agros-gate-install: the
+    # installed system gets these, approved, rather than whatever is newest on the day)
+    gate_fetch "${work_dir}/archiso/airootfs/opt/agros/gate"
     # AgrOS: greetd logs the live user straight into AgrOS's Hyprland session (/etc/greetd/config.toml)
     ln -sf /usr/lib/systemd/system/greetd.service "${work_dir}/archiso/airootfs/etc/systemd/system/display-manager.service"
 
@@ -191,7 +202,8 @@ run_build() {
 
     msg "Prepare [work: %s, out: %s]" "${work_dir}" "${_out}"
 
-    if $clean_first; then
+    # (not the RAM folder made for this build: empty, and its own)
+    if $clean_first && [[ ${work_fresh:-} != true ]]; then
         msg2 "Deleting the build folder if one exists - takes some time"
         remove_work_dir
     fi
@@ -235,6 +247,10 @@ run_build() {
     # (whatever date mkarchiso named it with: a build past midnight, or its build_date kept by -c, is another day's)
     local _built=("$_out"/agros-????.??.??-x86_64.iso)
     [[ ${#_built[@]} == 1 && -f ${_built[0]} ]] || die "mkarchiso's ISO not found (or several) in %s" "$_out"
+    # (the installer's copy checked before the ISO takes its name: one that fails isn't left as the newest, to be booted)
+    # (mkarchiso's own tree, what went into the ISO: a resumed build (-c) keeps its first run's, not the profile's new one)
+    ( gate_verify "${work_dir}/x86_64/airootfs/opt/agros/gate" "${work_dir}/iso/arch/pkglist.x86_64.txt" ) ||
+        { sudo rm -f "${_built[0]}"; die "The ISO was deleted: its Hyprland copy didn't check out"; }
     mv "${_built[0]}" "$_out/${iso_file}"
     cp "${work_dir}/iso/arch/pkglist.x86_64.txt" "$_out/${iso_file%.iso}.pkgs.txt"
 
@@ -264,6 +280,9 @@ gen_iso_fn(){
     vars+=("linux")
     # (and the time: a second ISO the same day got the first one's name, and replaced it on SourceForge)
     vars+=("${_iso_stamp}")
+    # (built past the upstream gate, AGROS_UNGATED: said in its own name, which goes wherever it's copied, and
+    # upload-iso.sh never publishes it)
+    [[ ${AGROS_UNGATED:-} != 1 ]] || vars+=("ungated")
 
     for n in "${vars[@]}"; do
         name=${name:-}${name:+-}${n}

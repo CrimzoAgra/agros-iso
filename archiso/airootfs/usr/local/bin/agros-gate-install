@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# AgrOS's upstream gate for a new install (the installer's step agrosgate, on the live system, after the packages are
+# installed): the installed system's Hyprland and its libraries are ones AgrOS's CI approved. The install downloads
+# whatever is newest on the day; when that isn't on AgrOS's approved list (a new Hyprland not checked yet), or the list
+# can't be fetched, the ISO's own copy is installed over it (/opt/agros/gate: the gated packages alone, at the versions
+# the ISO was built with, approved then; all of them together, built against each other). One whose libraries no longer
+# fit (a library's newer version installed alongside): the newest kept, said, and AgrOS's updates hold it until approved
+#   agros-gate-install <root>   (Calamares's ${ROOT}: the installed system's root)
+set -uo pipefail
+# (said, and kept in the new system's own log: the installer's is the live session's, gone at the restart)
+log=
+say() { echo "AgrOS: $*"; [[ -z $log ]] || echo "AgrOS: $*" >>"$log"; }
+root=${1:-}
+[[ -n $root && -d $root/var/lib/pacman/local ]] || { say "no installed system at '$root': gate skipped"; exit 0; }
+log=$root/var/log/agros-gate-install.log
+mkdir -p "${log%/*}"
+copy=${AGROS_GATE_COPY:-/opt/agros/gate}  # (another folder: a test of this)
+pkgs=()
+for f in "$copy"/*.pkg.tar.*; do [[ -e $f && $f != *.sig ]] && pkgs+=("$f"); done
+((${#pkgs[@]})) || { say "no Hyprland copy on this ISO: gate skipped"; exit 0; }
+# (the live system's pacman.conf: the same [agros] as the installed one's, whose Include of agros-gate.conf the live
+# system doesn't have, which pacman-conf can't read past)
+server=$(pacman-conf --repo agros Server 2>/dev/null | head -1)
+list=
+# (a few tries: one dropped request counted as "unreachable" put the ISO's older copy over an approved newest)
+# (a transfer that failed partway: nothing of it taken, a line cut short could read as another version)
+[[ -n $server ]] && { list=$(curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors "$server/agros-approved?t=$(date +%s)" 2>/dev/null) || list=; }
+grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" && list=
+need=() targets=() copied=" " differs=" "
+for f in "${pkgs[@]}"; do
+    read -r name ver < <(pacman -Qp "$f" 2>/dev/null) || continue
+    have=$(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2)
+    # (one the installed system doesn't have: not added; the rest keep why they were installed)
+    [[ -n $have ]] || continue
+    targets+=("$f")
+    copied+="$name "
+    [[ $have == "$ver" ]] || differs+="$name "
+    # (with the list: each version as installed on it, a rebuild of one (CachyOS's for newer CPUs, 0.14.3-1.1) too.
+    # Without: each the ISO's own version (approved when it was built, a rebuild of it the same), or not)
+    if [[ -n $list ]]; then
+        grep -qxF -- "$name ${have%-*}" <<<"$list" || need+=("$name $have")
+    elif [[ ${have%-*} != "${ver%-*}" ]]; then
+        need+=("$name $have")
+    fi
+done
+# (and, with the list, every gated package installed that the copy hasn't (an ISO built before it was gated): one not
+# approved can't be put back here, said; the installed system's updates hold it until it is)
+missing=()
+if [[ -n $list ]]; then
+    while read -r name; do
+        [[ $copied == *" $name "* ]] && continue
+        have=$(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2)
+        [[ -n $have ]] && ! grep -qxF -- "$name ${have%-*}" <<<"$list" && missing+=("$name $have")
+    done < <(cut -d' ' -f1 <<<"$list" | sort -u)
+fi
+((${#missing[@]})) && say "not approved yet, and not on this ISO to put back: ${missing[*]} (AgrOS's updates hold it until approved)"
+# (an ungated test build's copy: never taken as approved)
+[[ -z $list && -e $copy/ungated ]] && { say "the approved list unreachable, and this ISO's Hyprland a test build's (not checked): the installed one kept"; exit 0; }
+if ((!${#need[@]})); then
+    if ((${#missing[@]})); then :
+    elif [[ -n $list ]]; then say "Hyprland as installed is approved"
+    else say "Hyprland as installed is the ISO's own (the approved list unreachable)"; fi
+    exit 0
+fi
+# (the copy put in only when it's approved itself: on the list, or with none reachable, from a build that checked it)
+if [[ -n $list ]]; then
+    for f in "${targets[@]}"; do
+        read -r name ver < <(pacman -Qp "$f" 2>/dev/null) || continue
+        grep -qxF -- "$name ${ver%-*}" <<<"$list" && continue
+        say "not approved yet: ${need[*]}; the ISO's own isn't either ($name $ver): the newest kept (AgrOS's updates hold it until approved)"
+        exit 0
+    done
+fi
+say "not approved yet (or the list unreachable): ${need[*]}; the ISO's own installed instead"
+# (inside the installed system: pacman runs there, its hooks too, and reads the copy from there)
+mkdir -p "$root/var/cache/agros-gate"
+cp -- "${targets[@]}" "$root/var/cache/agros-gate/"
+inside=()
+for f in "${targets[@]}"; do inside+=("/var/cache/agros-gate/${f##*/}"); done
+# (AGROS_NO_USER_HOOKS: AgrOS's per-user hooks, hyprbars built for each account, left to the first login, not run
+# here, against Calamares's timeout)
+# (never cut off: an interrupted pacman stops between packages, a set half the ISO's and half the newest; the step's
+# time, an hour, is for this. What's installed then said as it is)
+AGROS_NO_USER_HOOKS=1 pacman --sysroot "$root" -U --noconfirm -- "${inside[@]}" 2>&1 | tee -a "$log"
+now=() old=()
+for f in "${targets[@]}"; do
+    read -r name ver < <(pacman -Qp "$f" 2>/dev/null) || continue
+    [[ $differs == *" $name "* ]] || continue  # (the same before: nothing to say of it)
+    if [[ $(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2) == "$ver" ]]; then now+=("$name"); else old+=("$name"); fi
+done
+if ((!${#old[@]})); then
+    say "the ISO's Hyprland installed"
+elif ((!${#now[@]})); then
+    say "the ISO's Hyprland couldn't be installed (pacman's reason above): the newest kept (AgrOS's updates hold it until approved)"
+else
+    say "the ISO's Hyprland only partly installed (pacman's reason above): ${now[*]} the ISO's, ${old[*]} the newest"
+fi
+rm -rf "$root/var/cache/agros-gate"
+exit 0

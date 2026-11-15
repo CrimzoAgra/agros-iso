@@ -18,6 +18,12 @@ sudo ./buildiso.sh -p desktop -w -f
 `-f` compresses at a lower zstd level (6, instead of 15). It's quicker and makes a bigger ISO. Use it to try out a
 change, and build without it for a release.
 
+Every build first checks that the Hyprland it would include has passed AgrOS's checks (the upstream gate: AgrOS's CI
+approves each new Hyprland once its tests pass with it, usually the same day). If it hasn't yet, the build stops and
+says which. For a test build that can't wait, `sudo AGROS_UNGATED=1 ./buildiso.sh ...` builds it anyway (also with no
+approved list to be had: then its installer has no Hyprland copy). Such an ISO has `-ungated` at the end of its name,
+isn't signed, and `upload-iso.sh` refuses to publish it (so `-u` with it stops at once).
+
 ## Options
 
 ```
@@ -41,7 +47,7 @@ Usage: buildiso.sh [options]
 - `-r` builds in a temporary folder in `/tmp`, which is in RAM, if it has 14 GB free for the work folder (half the RAM
   by default: about 32 GB of RAM); otherwise it says so and builds in `build/`. Without `-w`, the build reminds you to
   delete that folder afterwards, and a build that stops says where it is, since it still holds the RAM. Each `-r` build
-  gets a new folder, so `-c` does nothing with it.
+  gets a new folder, so there's nothing for `-c` to resume: the build refuses the two together.
 - `-w` deletes the work folder once the ISO is built. The ISO stays.
 - `-u` uploads the ISO once it's built, as in [Publishing the ISO](#publishing-the-iso).
 - Any other option, or any argument that isn't an option's, stops it, with the usage.
@@ -108,8 +114,31 @@ each change** (below); `upload-iso.sh` also works on its own.
    name. Without it the script uses `scp`, which needs the folder (`SF_FOLDER`) to exist in the project's Files already.
 6. Check it: `./upload-iso.sh --check` connects with your key and says `OK`, or what's wrong.
 7. For GitHub to publish by itself, add the secrets below in agros-iso's **Settings > Secrets and variables >
-   Actions**: `AGROS_GPG_KEY` (the signing key, `gpg --armor --export-secret-keys`), `SF_API_KEY`, and `SF_SSH_KEY`, a
-   private SSH key used only for this, whose public key is in SourceForge's SSH Settings as in step 2.
+   Actions**: `AGROS_GPG_KEY`, `SF_API_KEY` and `SF_SSH_KEY`, a private SSH key used only for this, whose public key is
+   in SourceForge's SSH Settings as in step 2. Neither key may have a passphrase (nothing on GitHub can type it;
+   publishing then fails at signing, or at SourceForge's check). GitHub gets a signing subkey of AgrOS's key, not the
+   key itself: should the secret ever leak, that subkey is revoked and the key, which AgrOS installs trust, stays. In
+   bash (not fish), with `<fpr>` AgrOS's key's fingerprint:
+
+   ```bash
+   # Once, if the key has no signing subkey yet (gpg -K <fpr> shows no [S] under "ssb"); then agros.asc here and the
+   # agros-keyring package get the key again with it (gpg --armor --export <fpr>), so signatures by it check
+   # (it expires in 2 years. Renew it months before: gpg --quick-set-expire <fpr> 2y <subkey-fpr>, then agros.asc and
+   # agros-keyring get the key again, published, and the secret below is made again. Once expired, every AgrOS
+   # machine refuses [agros]'s packages signed by it, the agros-keyring that would bring the renewal too)
+   gpg --quick-add-key <fpr> ed25519 sign 2y
+   # A copy with only the subkeys, without a passphrase, in a keyring of its own (yours left as it is)
+   tmp=$(mktemp -d)
+   # (<subkey-fpr>!: that signing subkey alone, from gpg -K --with-subkey-fingerprints)
+   gpg --armor --export-secret-subkeys '<subkey-fpr>!' | gpg --homedir "$tmp" --import
+   gpg --homedir "$tmp" --passwd <fpr>          # its passphrase, then an empty one
+   gpg --homedir "$tmp" --armor --export-secret-subkeys '<subkey-fpr>!'   # this is AGROS_GPG_KEY, in both repos
+   gpgconf --homedir "$tmp" --kill gpg-agent; rm -rf "$tmp"
+   # The SSH key, outside any repo: ~/.ssh/agros-sf-ci is SF_SSH_KEY, its .pub goes in SourceForge; both deleted after
+   ssh-keygen -t ed25519 -N '' -C agros-sf-ci -f ~/.ssh/agros-sf-ci
+   ```
+   The first time: push **agros** first and let its CI publish once. The ISO build checks Hyprland against the
+   approved list agros's CI publishes beside the `[agros]` repo (`agros-approved`), and stops while there is none.
 8. For agros's CI to start the ISO build after it publishes packages, add `AGROS_ISO_TOKEN` in **agros**'s secrets: a
    fine-grained GitHub token (**Settings > Developer settings > Fine-grained tokens**) for the agros-iso repository
    only, with **Actions: Read and write**.
@@ -123,10 +152,22 @@ publishing waits for it, up to 90 minutes, so the ISO has its packages (after th
 with a warning). A push that changes only those other files starts no run at all, and every other push publishes,
 even one back to a state published before (a revert is a new ISO). Only a run started by AgrOS's CI or by hand skips
 an ISO whose files and packages are already published. It also waits, up to 15 minutes, until GitHub Pages' cache
-serves AgrOS's newest package list, the one the build reads (after that it builds with the cached one, with a warning). An ISO that isn't signed isn't
-published. Each run is in the repo's **Actions** tab; **Run
-workflow** there publishes now (*force*: even if nothing changed). GitHub emails
-you when one fails. A failed upload is tried 3 times before the run fails (not one refused for its checksum or signature).
+serves AgrOS's newest package list, the one the build reads (after that it builds with the cached one, with a
+warning). An ISO that isn't signed isn't published. A run while a new Hyprland waits for AgrOS's check ends green with
+nothing built or published, saying so in the run's summary; AgrOS's CI starts it again once it has approved that
+Hyprland. Each run is in the repo's **Actions** tab; **Run workflow** there
+publishes now (*force*: even if nothing changed). GitHub emails you when one fails. A failed upload is tried 3 times
+before the run fails (not one refused for its checksum or signature).
+It runs as three jobs. **sourceforge** checks SourceForge's key first, so a revoked one stops the run before the
+build. **iso**, the build, runs thousands of packages' install scripts as root (Arch's, CachyOS's, AUR builds'), so it
+gets none of the secrets. **publish** signs the ISO and uploads it, in a container of its own that runs only official
+Arch packages' scripts (its tools'; the same trust gnupg, which signs, needs), and deletes each key once it's used.
+This keeps the signing key away from the build's scripts; it doesn't vouch for what they put in the ISO, which is
+signed as built, nor for the build's record of what's already published (one that escaped its container could mark a
+later build as published: **Run workflow** with *force* publishes it all the same). A failed upload is tried again
+with **Re-run failed jobs**, without building again (the built ISO is kept for a day); a re-run doesn't publish once a
+newer run has uploaded its ISO, so an older ISO never replaces a newer one as the download. Re-run only when no ISO
+run is waiting its turn (a re-run takes that place, and the waiting one is cancelled); otherwise use **Run workflow**.
 
 ### Uploading
 
@@ -141,7 +182,8 @@ sudo ./buildiso.sh -p desktop -w -u    # build, then upload
 It uploads the ISO with its `.sha256`, `.sig` and `.pkgs.txt` (those that exist) to
 `<SF_USER>@frs.sourceforge.net:/home/frs/project/<SF_PROJECT>/<SF_FOLDER>/`. First it checks the ISO against its
 `.sha256`, and the `.sig` against AgrOS's key in `agros.asc` (not your keyring: a good signature by any other key is
-refused too), and refuses an ISO that fails either (exit code 65, which GitHub's workflow doesn't retry). An ISO
+refused too), and refuses an ISO that fails either, or a test build (`-ungated` in its name: exit code 65, which
+GitHub's workflow doesn't retry). An ISO
 without a `.sig` goes up with a warning (with `--signed`, it doesn't go up). Run with `sudo`, as `buildiso.sh -u` does,
 it uploads as the user who ran `sudo`, with their SSH key, keyring and config file.
 

@@ -14,8 +14,33 @@ main() {
     # AgrOS: one at a time. Started again (from the menu, while the one the session opened is still starting or open),
     # it just stops: two reset the keyring under each other. The lock is held until the installer closes
     exec 9>"${XDG_RUNTIME_DIR:-/tmp}/calamares-online.lock"
-    flock -n 9 || exit 0
-
+    if ! flock -n 9; then
+        # (open: brought forward, from whichever workspace it's on, by the desktop's own focus (dots.focus_window:
+        # raised over other floating windows too, as a focus alone leaves it under them). Its process there but no
+        # window yet, opening or closing: waited for, up to 30 s, its window (brought forward) or its end (a new one
+        # started, as asked). Still getting ready: what it waits for said again, as nothing shows until its window opens)
+        shown() { hyprctl -j clients 2>/dev/null | jq -e 'any(.[]; .class == "io.calamares.calamares")' >/dev/null; }
+        forward() {
+            hyprctl eval 'local w = hl.get_window("class:io.calamares.calamares"); if w and dots and dots.focus_window then dots.focus_window(w.address) end' >/dev/null 2>&1
+        }
+        if shown; then
+            forward; exit 0
+        elif pgrep -x calamares >/dev/null; then
+            for _ in {1..30}; do
+                sleep 1
+                if shown; then forward; exit 0; fi
+                flock -n 9 && break
+            done
+            # (30 s and still no window, nor its end: a slow machine; said, rather than nothing)
+            flock -n 9 || { notify -a AgrOS -i agros-logo "Getting the installer ready"; exit 0; }
+        elif [[ $(nmcli networking connectivity check 2>/dev/null) != full ]]; then
+            notify -a AgrOS -i network-wireless "Connect to the internet to install" "The installer opens once you're connected."
+            exit 0
+        else
+            notify -a AgrOS -i agros-logo "Getting the installer ready"
+            exit 0
+        fi
+    fi
     # Online first: it opens at login, before a Wi-Fi user could connect, and the clock and keys below come from the
     # internet. Not connected: said once, then checked every 2 s for up to 5 minutes (the keyring step below fails
     # only after that, with its own notification)
@@ -28,6 +53,10 @@ main() {
             online && break
         done
     fi
+    # AgrOS: up to a minute or two of setup (the clock, the package keys) before its window opens: said, or it looked
+    # like it never started (once connected: offline, the two came at once; still offline after the wait, the keyring
+    # step's own notification says it couldn't be set up)
+    online && notify -a AgrOS -i agros-logo "Getting the installer ready"
 
     # The clock synced first (bounded: no NTP server reached in 30 s, it goes on): with a wrong clock the keys read as
     # "created in the future", and the keyring checks below fail
@@ -86,6 +115,7 @@ EOF
     # AgrOS: its package list (the AgrOS desktop), no desktop page, its login screen kept
     # (not started when a setting didn't apply: a CachyOS update had moved it, and the install would have gone on with
     # CachyOS's, Limine and no bootloader among them, failing only after the disk was wiped)
+    # shellcheck disable=SC2024  # (the log is the user's own: written as them, not root)
     if ! sudo /usr/local/bin/agros-calamares-config >>"$log" 2>&1; then
         why=$(grep '^AgrOS:' "$log" | tail -1)
         not_set_up "${why:-The AgrOS settings for the installer did not apply}." "Details: $log"

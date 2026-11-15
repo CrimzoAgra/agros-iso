@@ -20,6 +20,8 @@ check_umount() {
 # a space as \040
 umount_fs(){
     local i
+    # (no work folder yet, a failed mktemp: "" would match every mount)
+    [[ -n ${work_dir%/} ]] || return 0
     while IFS= read -r i; do
         info "umount folder: [%s]" "$i"
         check_umount "$i"

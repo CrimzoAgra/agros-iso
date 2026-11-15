@@ -37,8 +37,9 @@ It's cut down to what installing needs:
 
 ## The installer
 
-The installer opens by itself when the live session starts. If you close it, open it again with **Install AgrOS** in
-the Super menu.
+The installer opens by itself when the live session starts: "Getting the installer ready" says it's on its way (it
+takes a minute or two). If you close it, open it again with **Install AgrOS** in the Super menu; while it's open, that
+brings its window forward.
 
 It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 
@@ -48,6 +49,9 @@ It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 - There's no page to pick a desktop: AgrOS is the desktop.
 - It suggests a computer name starting with `agros-`, names the firmware's boot entry `AgrOS`, and sets up AgrOS's
   login screen on the new system.
+- If Hyprland was updated after the ISO was made and AgrOS hasn't checked the new version yet, the new system gets
+  the ISO's own Hyprland instead, when it still fits with the rest; it updates once AgrOS has checked the new one. `/var/log/agros-gate-install.log` on
+  the new system says which.
 
 It needs an internet connection, because it downloads the packages. If you aren't connected when it starts (on Wi-Fi,
 at the first login), it says "Connect to the internet to install": connect, and it goes on by itself within a few

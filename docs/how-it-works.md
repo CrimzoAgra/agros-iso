@@ -14,13 +14,13 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | Path | What it is |
 |---|---|
 | `buildiso.sh` | The entry point: reads the options, sets up the work folder, runs the build |
-| `util.sh` | Helpers: the timer, the build's requirements (`check_requirements`), checksums (`create_chksums`), signing (`sign_with_key`) and checking a signature is AgrOS's (`verify_agros_sig`), a key file's fingerprint (`key_fpr`), the output folder (`iso_out_dir`, `out/desktop`) and the newest ISO in it (`newest_iso`), the user who ran `sudo` (`invoking_user`, `as_invoking_user`); also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow |
+| `util.sh` | Helpers: the timer, the build's requirements (`check_requirements`), no `$` in AgrOS's commands for Calamares (`check_calamares_commands`), checksums (`create_chksums`), signing (`sign_with_key`) and checking a signature is AgrOS's (`verify_agros_sig`), the upstream gate (`gate_list`, `gate_plan`, `gate_waits`, `check_gate`: the ISO's Hyprland and its libraries only at versions AgrOS's CI approved; `gate_fetch` and `gate_verify`: their copy kept on the ISO for the installer), a key file's fingerprint (`key_fpr`), the output folder (`iso_out_dir`, `out/desktop`) and the newest ISO in it (`newest_iso`), the user who ran `sudo` (`invoking_user`, `as_invoking_user`); also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow |
 | `util-iso.sh` | The build itself: `prepare_profile` and `run_build`, the console welcome, the ISO's file name |
 | `util-iso-mount.sh` | Unmounts what a stopped build left mounted |
-| `util-msg.sh` | Coloured messages (`msg`, `warning`, `error`, `die`; on GitHub, warnings and errors are also annotations on the run) and `import`; also used by `upload-iso.sh` and `testiso.sh` |
+| `util-msg.sh` | Coloured messages (`msg`, `warning`, `error`, `die`; on GitHub, warnings and errors are also annotations on the run) and `import`; also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow's upstream gate step and publish job |
 | `upload-iso.sh` | Uploads a built ISO, with its `.sha256`, `.sig` and `.pkgs.txt`, to SourceForge (`buildiso.sh -u`, or by hand): see [Publishing the ISO](../manual/03-building.md#publishing-the-iso) |
 | `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
-| `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main` (not one of only docs), or AgrOS's packages changed (agros's CI starts it after publishing them); built, signed and uploaded there. See [Published by itself](../manual/03-building.md#published-by-itself) |
+| `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main` (not one of only docs), or AgrOS's packages changed (agros's CI starts it after publishing them); three jobs: `sourceforge` checks SourceForge's key; `iso` builds with no secrets (it runs packages' install scripts as root; `AGROS_SIGN_LATER` leaves signing to the next job); `publish` signs and uploads, running only official Arch packages' scripts (the key kept from the build's, not the ISO checked: it's signed as built), and, on a re-run, only if no newer run has published since. See [Published by itself](../manual/03-building.md#published-by-itself) |
 | `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
 | `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with zstd (level 15), file permissions |
 | `archiso/packages_desktop.x86_64` | The live system's packages (copied to `packages.x86_64` in the build's copy of the profile) |
@@ -36,7 +36,7 @@ The AgrOS ones in `archiso/airootfs/`:
 
 | Path | What it does |
 |---|---|
-| `etc/pacman.conf`, `etc/pacman-more.conf` | The live system's and the installed system's `pacman.conf`, both with `[agros]` |
+| `etc/pacman.conf`, `etc/pacman-more.conf` | The live system's and the installed system's `pacman.conf`, both with `[agros]`. Neither includes AgrOS's upstream gate: `agros-system` adds that line to the installed one as it installs its file (`/etc/pacman.d/agros-gate.conf`), as this one is in place before anything is installed and pacman can't read a config including a missing file |
 | `etc/greetd/config.toml` | Logs `liveuser` straight into Hyprland (`uwsm start -e -D Hyprland hyprland.desktop`); logged out, `agreety` starts it again |
 | `etc/xdg/autostart/agros-install.desktop` | Opens the installer when the session starts |
 | `etc/xdg/autostart/live-session-menu.desktop` | Runs `live-session-menu` when the session starts |
@@ -44,7 +44,8 @@ The AgrOS ones in `archiso/airootfs/`:
 | `usr/share/applications/agros-install.desktop` | **Install AgrOS** in the Super menu; its `StartupWMClass` gives the installer's window AgrOS's icon in the dock |
 | `usr/local/bin/calamares-online.sh` | Starts the installer (below) |
 | `usr/local/bin/agros-calamares-config` | AgrOS's installer settings (below) |
-| `usr/local/bin/live-session-menu` | Sets Caelestia's `launcher.hiddenApps` in the live user's `shell.json` to hide every app but `agros-install`, `foot`, `thunar`, `librewolf` and `gparted` (with `jq`, under the lock the file's other writers use) |
+| `usr/local/bin/agros-gate-install` | The installer's upstream gate step (below) |
+| `usr/local/bin/live-session-menu` | Sets Caelestia's `launcher.hiddenApps` in the live user's `shell.json` to hide every app but `agros-install`, `foot`, `thunar`, `librewolf` and `gparted`, and `launcher.favouriteApps` to none, through agros-scripts' `json-edit` (the file's other writers' lock; one Caelestia is mid-rewrite is tried again, never reset) |
 | `usr/local/bin/pkexec-wrapper` | Runs the installer as root under Hyprland (below) |
 | `etc/pacman.d/hooks/agros-live-rate-mirrors-off.hook` | Turns `cachyos-rate-mirrors.timer` off on the live system once its package has enabled it (only for the build: removed afterwards, as CachyOS's build-time hooks are) |
 | `usr/share/agros/netinstall.yaml` | The installer's package list |
@@ -55,13 +56,24 @@ The AgrOS ones in `archiso/airootfs/`:
 `sudo ./buildiso.sh -p desktop -w` runs these, in order:
 
 1. **Options.** `-c`, `-r`, `-w`, `-f`, `-a`, `-u`, `-p` and `-h`, as in [Building the ISO](../manual/03-building.md);
-   any other, or an argument, stops it. The work folder is `build/` (with `-r`, a `mktemp` folder in `/tmp`, RAM, if it
+   any other, or an argument, stops it, as does a `$` in AgrOS's commands for Calamares (`check_calamares_commands`:
+   its installer would never open). The work folder is `build/` (with `-r`, a `mktemp` folder in `/tmp`, RAM, if it
    has 14 GB free: the live system unpacked, about 7.6 GB, and the ISO's files with its squashfs, about 3.3 GB); the
    output is `out/desktop/` (`iso_out_dir`). `check_requirements` installs what the build needs on the host and is
    missing (`archiso`, `git`, `grub`: the one list of them; `squashfs-tools` comes with `archiso`, and
    `mkinitcpio-archiso` goes into the ISO from its package list) with `sudo pacman -S`, or stops with the command to
    run. It also stops when `pacman -Qkk archiso` finds `/usr/bin/mkarchiso` edited (older checkouts
-   edited it in place), with the command that restores it.
+   edited it in place), with the command that restores it. Then `check_gate`: the Hyprland and libraries the ISO
+   would get must be on AgrOS's approved list (`agros-approved` beside the `[agros]` repo), else it stops (exit code
+   75, which the ISO workflow reads as a wait, as its own gate step's) and the published ISO stays the download
+   (`AGROS_UNGATED=1` builds anyway, with a warning, even with no list: a test build, `-ungated` in the ISO's name,
+   never signed with AgrOS's key, which `upload-iso.sh` refuses, and `buildiso.sh -u` with it stops at once; its copy
+   marked `ungated`, which the installer never takes as approved). The list is fetched once a build, with a time limit
+   (a file the later steps read, in a folder of its own; with `AGROS_UNGATED`, none found is remembered too). Those packages are also downloaded into the live system's files (`/opt/agros/gate`, `gate_fetch`, as
+   the profile is set up: step 3; those packages alone, not what they need) for the installer, and checked once the
+   ISO is made, before it takes its name (`gate_verify`, on mkarchiso's own tree, what went into the ISO): only gated
+   packages, every gated one the ISO has, at its own versions (a mirror updated mid-build, or the installer would put
+   in another Hyprland than the live system's) and approved; else the ISO is deleted and the build stops.
 2. **`run_build`** deletes the old work folder (not with `-c`, which resumes a stopped build; `buildiso.sh` refuses it
    when the folder has mkarchiso's last marker, `iso._build_iso_image`) and copies `archiso/` into it: only the files
    git tracks (`copy_profile`, `git ls-files`; edits not committed yet included), so what an older checkout's build
@@ -73,7 +85,7 @@ The AgrOS ones in `archiso/airootfs/`:
    `etc/version-tag` (and in `grub.cfg` and `loopback.cfg`, `CACHYOS_VERSION`, checked in both: the repo's say `GIT`);
    CachyOS's current mirrorlist (the build stops if it can't be downloaded), from CachyOS-PKGBUILDS; the console
    welcome (`etc/motd`, AgrOS's); the `display-manager.service` link to greetd; `packages.x86_64`; `etc/environment`
-   (`ZPOOL_VDEV_NAME_PATH=1`); and `etc/edition-tag` (`desktop`). Any profile but `desktop` stops the build at once
+   (`ZPOOL_VDEV_NAME_PATH=1`); `etc/edition-tag` (`desktop`); and the installer's Hyprland copy (`gate_fetch`, step 1). Any profile but `desktop` stops the build at once
    (`buildiso.sh`, right after its options), before anything is deleted or downloaded. With
    `-f`, it lowers the copy's squashfs zstd level (`profiledef.sh`) from 15 to 6, and stops if that line didn't change.
 4. **mkarchiso changes.** `modify_mkarchiso` copies the system's `/usr/bin/mkarchiso` to the work folder (`mkarchiso`)
@@ -88,21 +100,27 @@ The AgrOS ones in `archiso/airootfs/`:
    with the fan at full. No quota with `-a`, or with no systemd running (GitHub's container).
 6. **Naming.** mkarchiso's `agros-YYYY.MM.DD-x86_64.iso` (whatever its date: a build that ran past midnight, or a work
    folder kept by `-c`) is renamed to `agros-desktop-linux-YYMMDD-HHMM.iso` (`gen_iso_fn`; the time too, so two the same
-   day don't share a name), and the live system's package list is copied next to it as `.pkgs.txt`.
+   day don't share a name; `-ungated` at its end for a test build, step 1), once `gate_verify` passed, and the live
+   system's package list is copied next to it as `.pkgs.txt`.
 7. **Checksums and signature** for that ISO only: `.sha1` and `.sha256`, then a detached `.sig`. `sign_with_key` signs
    with AgrOS's key, the one in `agros.asc` (`23B6096B42D05E1E`, the one `agros-keyring` holds; read from the file, as
    the ISO workflow does for its pacman keyring), always: a `GPGKEY` in a `makepkg.conf` isn't read, since the upload
-   refuses a signature by any other key. It signs as the user who ran `sudo` (`as_invoking_user`), with their keyring.
+   refuses a signature by any other key. It signs as the user who ran `sudo` (`as_invoking_user`), with their keyring. With
+   `AGROS_SIGN_LATER` set (the ISO workflow's build) it leaves the ISO unsigned, said, for a later step to sign.
    Without the key, or when gpg fails (no passphrase, pinentry or primary key), it warns and skips the signature; the
    cleanup and upload still run. Signing each build's ISO alone, not every ISO in the folder again, is an AgrOS
    change.
 8. **Cleanup.** With `-w` it deletes the work folder. The exit trap, there to report a build that stops halfway, is
    cleared at the end, so a good build no longer ends with "An unknown error has occurred". A build that stops says
    why once (its own error, or "An unknown error has occurred" for a failed command), unmounts once, and with `-r`
-   says where the work folder is, still in RAM.
+   says where the work folder is, still in RAM (one with nothing built in yet is removed instead). The traps are set
+   before anything is made. The upstream gate's folder (`gate_dir`: the approved list and the package lists its check
+   read) is removed at the end or on a stop, and the build's exit code is kept through the trap (75: a wait for the
+   upstream gate, not a failure).
 9. **Upload**, with `-u` only: `upload-iso.sh` on the ISO just built. Run as root, it starts itself again as the
    user who ran `sudo` (`as_invoking_user`: `sudo -u "$SUDO_USER" -H`), so ssh and `~/.config/agros-iso/upload.conf`
-   are that user's. It refuses (exit code 65) an ISO that doesn't match its `.sha256`, or whose `.sig` isn't a good
+   are that user's. It refuses (exit code 65) a test build (`-ungated` in its name), an ISO that doesn't match its
+   `.sha256`, or whose `.sig` isn't a good
    signature by AgrOS's key: `verify_agros_sig` checks it with `gpgv` against a keyring of `agros.asc` alone (not the
    user's keyring, so no other key passes) and matches the `VALIDSIG` fingerprint with `agros.asc`'s. An ISO with no
    `.sig` goes up with a warning (`buildiso.sh -u`); with `--signed`, as the ISO workflow uses it, it's refused too.
@@ -173,11 +191,14 @@ The AgrOS ones in `archiso/airootfs/`:
 
 `calamares-online.sh` (CachyOS's, with AgrOS's lines):
 
-1. Stops if it's already running (a lock in `$XDG_RUNTIME_DIR`, held until the installer closes), so opening it
-   again from the menu doesn't start a second one.
+1. Already running (a lock in `$XDG_RUNTIME_DIR`, held until the installer closes), it doesn't start a second one: its
+   window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
+   process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
+   forward, or a new one started); still getting ready, what it's waiting for is said again.
 2. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
    login, it says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
    minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
+   Once online, says "Getting the installer ready" (its window takes a minute or two).
    Syncs the clock and waits for it (up to 30 seconds), since a keyring "created in the future" breaks the install.
    Waits for the ISO's `pacman-init.service` (the keyring it makes at boot), then makes a new pacman keyring and
    populates the `archlinux`, `cachyos` and `agros` keys, then installs the latest `archlinux-keyring` and
@@ -204,6 +225,22 @@ as the partition names, from the palette and not the stylesheet.
   `https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/usr/share/agros/netinstall.yaml`
   first, and the ISO's own copy (`file:///usr/share/agros/netinstall.yaml`) if that can't be fetched. So a change to
   `netinstall.yaml` pushed to `main` reaches ISOs that are already built.
+- `shellprocess_agrosgate.conf` (just before the next one, on the live system: `dontChroot`): `agros-gate-install`.
+  The install downloaded the newest Hyprland and libraries; one not on AgrOS's approved list (a new Hyprland not
+  checked yet), or no list reachable, and the ISO's own copy (`/opt/agros/gate`) is installed over them, all together
+  (`pacman --sysroot ... -U`, from a copy inside the new system). One whose libraries no longer fit it: the newest kept;
+  the installed system's updates hold it until approved. Only the gated packages the new system has are put in (each
+  keeping why it was installed), and a rebuild of the same version (CachyOS's for newer CPUs, `-1.1`) counts as the
+  same. What it did is in the new system's `/var/log/agros-gate-install.log`. AgrOS's per-user package hooks
+  (hyprbars built for each account) don't run in it (`AGROS_NO_USER_HOOKS`): the first login does that. The new
+  system's root is Calamares's `${ROOT}`; the approved list's address comes from the live system's own `pacman.conf`
+  (the new system's includes the gate's file, which the live system lacks), fetched with a few tries. The copy goes in
+  only when it's approved itself: on the list, or, with the list unreachable, from a build that checked it (a test
+  build's copy, marked `ungated`, never). A gated package installed that the copy hasn't (an ISO built before it was
+  gated), not approved, is said, and held by the new system's updates. pacman there is never cut off (interrupted, it
+  stops between packages: a set half the ISO's): the step has an hour, as CachyOS's own have, and what's installed
+  after it (all, none, or which) is said as it is. The command starts with `-`: its failure, or its timeout, never
+  fails the install
 - `shellprocess_greetd.conf` (one of the install's last steps, in the new system: after the bootloader and the
   services, before the installation snapshot and the cleanup): removes the six `.pacnew` files of the
   live system's pacman.conf, resolv.conf and mirror lists; deletes the snapshots the install's own package runs made
@@ -214,6 +251,10 @@ as the partition names, from the palette and not the stylesheet.
   config into place and enables greetd (CachyOS's `dmcheck` only enables greetd for `noctalia-greeter`, so without
   this AgrOS would boot to a text login). It also names the first snapshot "Fresh AgrOS Installation", and has the
   btrfs step that takes it (after this one) remake GRUB's menu, so the snapshot is in it from the first boot.
+  Its command has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
+  variable (one it doesn't know stops the whole install), turns `$$` into `\$`, and tracks quotes without knowing
+  shell comments. `agros-calamares-config` refuses to start the installer with one, and `buildiso.sh` refuses to build
+  an ISO with one (`check_calamares_commands` in `util.sh`).
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
   firmware's boot entry and GRUB's folder `EFI/AgrOS`; and `/usr/local/bin/remove-nvidia` out of `pacstrap.conf`'s
