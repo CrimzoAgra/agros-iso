@@ -1,0 +1,31 @@
+name: CachyOS sync
+
+# CachyOS's ISO repo, what this one is based on, followed: their new commits each day as a pull request into main, never
+# merged by this. Each one is read before it goes in: a change of theirs in a spot AgrOS never touched merges cleanly,
+# and could bring back what AgrOS left out on purpose (KDE's apps, their installer from staging). The branch "cachyos"
+# is their master as it is; the pull request says which files conflict with AgrOS's changes (resolved by hand)
+# (needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests")
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: cachyos-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Their new commits, as a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: .github/cachyos-sync.sh

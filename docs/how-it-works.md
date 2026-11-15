@@ -305,11 +305,20 @@ So the repo has to be published before you build: the build's pacman reads it, a
 
 ## Following CachyOS
 
-`upstream` is `https://github.com/CachyOS/CachyOS-Live-ISO`. To take in CachyOS's changes:
+`upstream` is `https://github.com/CachyOS/CachyOS-Live-ISO`. Each day the CachyOS sync workflow
+(`.github/workflows/cachyos-sync.yml`, its script `.github/cachyos-sync.sh`) pushes CachyOS's `master` as the branch
+`cachyos` and opens a pull request from it into `main`, or updates the open one. The pull request lists their new
+commits, the files they change, and those that conflict with AgrOS's changes. It is never merged by the workflow:
+a change of theirs in a spot AgrOS never touched merges cleanly, and could bring back what AgrOS left out on purpose
+(KDE's apps, their installer from staging), so each one is read first. A pull request with no conflicts can be
+merged on GitHub; one with conflicts is merged by hand:
 
 ```bash
 git pull upstream master
 ```
+
+The workflow needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull
+requests".
 
 When CachyOS changes its package list, update `netinstall.yaml` the same way. After a new CachyOS installer, check the
 Partitions and Packages pages and the language list: the installer's fixes are plain text swaps in the agros repo's CI,
