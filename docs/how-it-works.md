@@ -298,7 +298,9 @@ as the partition names, from the palette and not the stylesheet.
 
 The ISO builds nothing of AgrOS's itself. Everything AgrOS comes from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`), which the agros repo's CI (`ci/build-repo.sh`) builds and publishes on
-GitHub Pages, signed with AgrOS's key:
+GitHub Pages, signed with AgrOS's key. Its second server, `https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/repo/$arch`
+(Cloudflare R2, the bucket the ISO is downloaded from; agros's `mirror.yml` copies Pages there after each CI run), is
+listed after it in all three `pacman.conf` files, so pacman goes there only when Pages can't be reached:
 
 - **AgrOS's packages.** The live system gets `agros-keyring`, `agros-scripts`, `agros-hyprland-settings`,
   `agros-welcome` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo (`quickshell-git`,
