@@ -15,6 +15,9 @@
 #   Kernel" (id cachyos-lts) and syslinux's "current kernel" (cos64cur). When CachyOS has reworked its menus so this
 #   can't be done cleanly (a file or entry not where it was), the LTS kernel stays, said, and the build goes on: a
 #   bigger ISO, never a boot entry without its kernel
+# Each fallback (a name no longer in the list, NoExtract not added, the LTS kernel kept) is a line ending in
+# "(agros-trim.sh)": agros's weekly size watch (ci/sizes.sh there) runs this too and puts those lines in the Friday
+# status, so keep that ending on them
 set -euo pipefail
 p=${1:?usage: agros-trim.sh <the copy of archiso/ the build uses>}
 list=$p/packages.x86_64
