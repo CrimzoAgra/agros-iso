@@ -201,10 +201,11 @@ iso_out_dir() {
     echo "$src_dir/out/${1:-desktop}"
 }
 
-# The newest ISO in a folder [default: iso_out_dir's]
+# The newest ISO in a folder [default: iso_out_dir's], a finished one (gen_iso_fn's name): not the one a stopped build
+# left half-written under mkarchiso's (agros-YYYY.MM.DD-x86_64.iso), which testiso.sh booted
 newest_iso() {
     # shellcheck disable=SC2012
-    ls -t "${1:-$(iso_out_dir)}"/*.iso 2>/dev/null | head -n1
+    ls -t "${1:-$(iso_out_dir)}"/agros-*-linux-*.iso 2>/dev/null | head -n1
 }
 
 # The user who started it: under sudo, the one who ran sudo (whose keyring, SSH key, home and config these are)
