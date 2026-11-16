@@ -51,26 +51,43 @@ echo "  -> Left out of the live ISO: ${gone[*]:-nothing}"
 # pattern that matches nothing any more (a package renamed its files) just leaves them in: a bigger ISO, nothing broken.
 # (pacman: a file's last matching pattern decides, `!` unpacks it after all, and * matches / too: each `!` after its
 # pattern)
-no_extract=(
-    'usr/share/locale/*' '!usr/share/locale/locale.alias' '!usr/share/locale/*/LC_MESSAGES/calamares*'
-    '!usr/share/locale/*/LC_MESSAGES/k*' '!usr/share/locale/*/LC_MESSAGES/*_qt.qm'
-    '!usr/share/locale/*/LC_MESSAGES/libplasma*' '!usr/share/locale/*/LC_MESSAGES/xkeyboard-config*'
-    'usr/share/man/*' 'usr/share/info/*'
-    'usr/share/doc/*' '!usr/share/doc/fish/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
+unused=(
     'usr/share/fonts/TTF/JetBrainsMonoNerdFontMono-*' 'usr/share/fonts/TTF/JetBrainsMonoNerdFontPropo-*'
     'usr/share/fonts/TTF/JetBrainsMonoNL*'
     'usr/share/fonts/TTF/CaskaydiaCoveNerdFontMono-*' 'usr/share/fonts/TTF/CaskaydiaCoveNerdFontPropo-*'
     'usr/share/fonts/TTF/MaterialSymbolsOutlined*' 'usr/share/fonts/TTF/MaterialSymbolsSharp*'
     'usr/share/hypr/wall*.png'
 )
-conf=$p/pacman.conf
-if [[ $(grep -c '^\[options\]$' "$conf" 2>/dev/null) == 1 ]]; then
-    # (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
-    sed -i "/^\[options\]\$/a NoExtract = ${no_extract[*]}" "$conf"
-    echo "  -> Not unpacked in the live ISO: unused font styles, Hyprland's wallpapers, translations, man pages, docs"
-else
-    echo "  -> Every file unpacked: no single [options] in $conf (agros-trim.sh)"
-fi
+no_extract=(
+    'usr/share/locale/*' '!usr/share/locale/locale.alias' '!usr/share/locale/*/LC_MESSAGES/calamares*'
+    '!usr/share/locale/*/LC_MESSAGES/k*' '!usr/share/locale/*/LC_MESSAGES/*_qt.qm'
+    '!usr/share/locale/*/LC_MESSAGES/libplasma*' '!usr/share/locale/*/LC_MESSAGES/xkeyboard-config*'
+    'usr/share/man/*' 'usr/share/info/*'
+    'usr/share/doc/*' '!usr/share/doc/fish/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
+    "${unused[@]}"
+)
+# Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
+# (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf
+# (airootfs/etc/pacman-more.conf, the installer's copy before the first package), marked "# agros-iso": agros-system's
+# install swaps it for its Include of the same list (agros's packages/agros-system/agros-noextract.conf: keep the two
+# the same)
+installed=(
+    'usr/share/doc/*' '!usr/share/doc/fish/*' '!usr/share/doc/hplip*/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
+    "${unused[@]}"
+)
+# (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
+noextract() {
+    if [[ $(grep -c '^\[options\]$' "$1" 2>/dev/null) == 1 ]]; then
+        sed -i "/^\[options\]\$/a NoExtract = $2" "$1"
+        echo "  -> Not unpacked $3"
+    else
+        echo "  -> Every file unpacked $3: no single [options] in $1 (agros-trim.sh)"
+    fi
+}
+noextract "$p/pacman.conf" "${no_extract[*]}" \
+    "in the live ISO: unused font styles, Hyprland's wallpapers, translations, man pages, docs"
+noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
+    "on installed systems: unused font styles, Hyprland's wallpapers, docs"
 
 boot=(grub/grub.cfg grub/loopback.cfg syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg)
 keep_lts() { echo "  -> The LTS kernel kept in the live ISO: $1 (agros-trim.sh)"; exit 0; }
