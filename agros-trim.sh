@@ -7,7 +7,9 @@
 #
 #   ./agros-trim.sh <the build's copy of archiso/>
 #
-# - occt: a CPU/GPU stress test
+# - packages the live session and the installer don't use (CachyOS's ISO has them for its Plasma desktop or as a
+#   rescue disk): leave_out below. One no longer in the list (renamed or dropped by CachyOS) is said in the build's log,
+#   nothing else: one something else needs comes back as its dependency, so none of this can break the ISO
 # - the LTS kernel (linux-cachyos-lts and its modules): every boot entry that booted it (BIOS's default, the fallback,
 #   network boot) boots the main kernel instead, and the entries that would then be the same twice go: GRUB's "LTS
 #   Kernel" (id cachyos-lts) and syslinux's "current kernel" (cos64cur). When CachyOS has reworked its menus so this
@@ -18,8 +20,23 @@ p=${1:?usage: agros-trim.sh <the copy of archiso/ the build uses>}
 list=$p/packages.x86_64
 [[ -f $list ]] || { echo "agros-trim.sh: no $list" >&2; exit 1; }
 
-sed -i '/^occt$/d' "$list"
-echo "  -> Left out of the live ISO: occt"
+leave_out=(
+    occt                                    # a CPU/GPU stress test
+    orca espeak-ng brltty                   # Plasma's screen reader, speech, braille (nothing in AgrOS's session starts them)
+    smbclient nmap wvdial bind lynx ntp irssi lftp ldns tcpdump  # rescue disk network tools (the installer: curl, timesyncd)
+    vim micro mc                            # editors besides nano
+    opendesktop-fonts                       # a second Chinese font (Noto CJK covers the installer's language list)
+    clonezilla partclone partimage testdisk ddrescue  # disk backup and rescue
+    cloud-init                              # cloud server setup, never enabled
+    cachyos-cli-installer-new               # CachyOS's text installer (it installs CachyOS, not AgrOS)
+    edk2-shell                              # the UEFI Shell boot entry
+)
+gone=() missing=()
+for n in "${leave_out[@]}"; do
+    if grep -qx "$n" "$list"; then sed -i "/^${n//./\\.}\$/d" "$list"; gone+=("$n"); else missing+=("$n"); fi
+done
+echo "  -> Left out of the live ISO: ${gone[*]:-nothing}"
+((${#missing[@]} == 0)) || echo "  -> Not in CachyOS's list any more (renamed or dropped?): ${missing[*]} (agros-trim.sh)"
 
 boot=(grub/grub.cfg grub/loopback.cfg syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg)
 keep_lts() { echo "  -> The LTS kernel kept in the live ISO: $1 (agros-trim.sh)"; exit 0; }
