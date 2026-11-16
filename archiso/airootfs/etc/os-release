@@ -1,6 +1,7 @@
 NAME="AgrOS"
 PRETTY_NAME="AgrOS"
-ID=arch
+ID=agros
+ID_LIKE="cachyos arch"
 BUILD_ID=rolling
 ANSI_COLOR="38;2;190;196;238"
 HOME_URL="https://github.com/CrimzoAgra/agros"

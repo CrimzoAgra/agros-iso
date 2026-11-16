@@ -1,0 +1,17 @@
+# remove from airootfs!
+# AgrOS's name back in the live system's os-release and lsb-release once CachyOS's hooks have put CachyOS's there:
+# hooks run in name order, so this one after os-release.hook and before zzzz99-..., which removes these build-only files
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = lsb-release
+Target = cachyos-hooks
+
+[Action]
+Description = AgrOS's name in os-release...
+When = PostTransaction
+Depends = bash
+Depends = sed
+Exec = /usr/bin/bash /etc/pacman.d/hooks/agros-live-branding

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# remove from airootfs!
+# AgrOS's name on the live system (Caelestia's lock screen, fastfetch), as agros-system's agros-branding gives the
+# installed one: CachyOS's cachyos-branding rewrites /etc/os-release and /etc/lsb-release as its packages go in, after
+# airootfs's own os-release is in place, so zz-agros-live-branding.hook runs this after it. Only for the build
+#   agros-live-branding [<os-release> [<lsb-release>]]   (other files: the test's)
+f=${1:-/etc/os-release} lsb=${2:-/etc/lsb-release}
+sed -i "$f" \
+    -e 's|^NAME=.*$|NAME="AgrOS"|' \
+    -e 's|^PRETTY_NAME=.*$|PRETTY_NAME="AgrOS"|' \
+    -e 's|^ID=.*$|ID=agros|' \
+    -e 's|^ID_LIKE=.*$|ID_LIKE="cachyos arch"|' \
+    -e 's|^ANSI_COLOR=.*$|ANSI_COLOR="38;2;190;196;238"|' \
+    -e 's|^HOME_URL=.*$|HOME_URL="https://github.com/CrimzoAgra/agros"|' \
+    -e 's|^DOCUMENTATION_URL=.*$|DOCUMENTATION_URL="https://github.com/CrimzoAgra/agros#readme"|' \
+    -e 's|^SUPPORT_URL=.*$|SUPPORT_URL="https://github.com/CrimzoAgra/agros/issues"|' \
+    -e 's|^BUG_REPORT_URL=.*$|BUG_REPORT_URL="https://github.com/CrimzoAgra/agros/issues"|' \
+    -e 's|^LOGO=.*$|LOGO=agros-logo|' \
+    -e '/^PRIVACY_POLICY_URL=/d'
+grep -q '^ID_LIKE=' "$f" || sed -i "$f" -e '/^ID=/a ID_LIKE="cachyos arch"'
+grep -q '^LOGO=' "$f" || echo 'LOGO=agros-logo' >>"$f"
+if [[ -e $lsb ]]; then
+    sed -i "$lsb" -e 's|^DISTRIB_ID=.*$|DISTRIB_ID=agros|' -e 's|^DISTRIB_DESCRIPTION=.*$|DISTRIB_DESCRIPTION="AgrOS"|'
+fi
+exit 0

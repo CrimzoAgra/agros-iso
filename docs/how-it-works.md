@@ -50,6 +50,7 @@ The AgrOS ones in `archiso/airootfs/`:
 | `usr/local/bin/live-session-menu` | Sets Caelestia's `launcher.hiddenApps` in the live user's `shell.json` to hide every app but `agros-install`, `foot`, `thunar`, `librewolf` and `gparted`, and `launcher.favouriteApps` to none, through agros-scripts' `json-edit` (the file's other writers' lock; one Caelestia is mid-rewrite is tried again, never reset) |
 | `usr/local/bin/pkexec-wrapper` | Runs the installer as root under Hyprland (below) |
 | `etc/pacman.d/hooks/agros-live-rate-mirrors-off.hook` | Turns `cachyos-rate-mirrors.timer` off on the live system once its package has enabled it (only for the build: removed afterwards, as CachyOS's build-time hooks are) |
+| `etc/pacman.d/hooks/zz-agros-live-branding.hook`, `agros-live-branding` | Puts AgrOS's name back in `/etc/os-release` and `/etc/lsb-release` after CachyOS's hooks have written CachyOS's there, as `agros-system`'s `agros-branding` does on the installed system (only for the build, removed afterwards) |
 | `usr/share/agros/netinstall.yaml` | The installer's package list |
 | `usr/share/calamares/branding/agros/` | The installer's branding (below) |
 
@@ -159,8 +160,9 @@ The AgrOS ones in `archiso/airootfs/`:
 - `archiso/airootfs/usr/local/bin/agros-calamares-config`, run when the installer starts, points the installer at that
   list, removes the desktop page, and makes CachyOS's greetd step (`shellprocess@greetd`) start AgrOS's login
   screen, adding the step where CachyOS's settings don't have it (its newer branches).
-- The live system is named AgrOS: `airootfs/etc/os-release` (`NAME`, `PRETTY_NAME`, `LOGO=agros-logo`) and
-  `airootfs/etc/hostname` (`agros`).
+- The live system is named AgrOS: `airootfs/etc/os-release` (`NAME`, `PRETTY_NAME`, `LOGO=agros-logo`), kept so by
+  `zz-agros-live-branding.hook` once CachyOS's `cachyos-hooks` has renamed it CachyOS, and `airootfs/etc/hostname`
+  (`agros`).
 - The network-boot (PXE) menu entries drop `cms_verify=y` (`archiso/syslinux/archiso_pxe-linux.cfg`, the reason in a
   comment there).
 - The live system's installer is AgrOS's rebuild from `[agros]` (`agros/cachyos-calamares-next` in
