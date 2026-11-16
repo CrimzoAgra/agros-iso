@@ -356,11 +356,16 @@ jobs:
           . ./util-msg.sh && . ./util.sh
           iso=$(newest_iso) && [ -n "$iso" ] || { echo "::error::No ISO in the build's files"; exit 1; }
           name=${iso##*/}
-          # (the ISO first, its checksum and signature after: a download in between gets the old ones for a few seconds)
+          # (all three uploaded beside the published ones first, then moved in place on R2 itself, seconds apart, the ISO
+          # first: an upload that fails, the ISO's minutes included, leaves the old ISO with its own checksum and
+          # signature, not the new ISO with the old ones)
           for ext in "" .sha256 .sig; do
             rclone copyto --retries 3 --s3-no-check-bucket \
               --header-upload "Content-Disposition: attachment; filename=\"$name$ext\"" \
-              "$iso$ext" "r2:$R2_BUCKET/agros-latest.iso$ext"
+              "$iso$ext" "r2:$R2_BUCKET/agros-latest.iso$ext.new"
+          done
+          for ext in "" .sha256 .sig; do
+            rclone moveto --retries 3 --s3-no-check-bucket "r2:$R2_BUCKET/agros-latest.iso$ext.new" "r2:$R2_BUCKET/agros-latest.iso$ext"
           done
       - name: Mark it published
         if: steps.newest.outputs.ok == 'true'
