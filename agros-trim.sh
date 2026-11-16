@@ -39,9 +39,16 @@ leave_out=(
     nvme-cli sg3_utils sdparm               # disk admin tools (the installer's partitioning: kpmcore, smartmontools)
     darkhttpd imwheel                       # Arch's test web server; an X11 mouse-wheel tool (the session is Wayland)
 )
+# The list read as mkarchiso reads it: a comment after a name, blanks around it. named <ERE>: a package in it matches;
+# drop <ERE>: the lines naming one that does, gone
+named() { re="^($1)\$" awk '{ sub(/#.*/, ""); gsub(/[[:blank:]]/, "") } $0 ~ ENVIRON["re"] { f = 1 } END { exit !f }' "$list"; }
+drop() {
+    re="^($1)\$" awk '{ l = $0; sub(/#.*/, "", l); gsub(/[[:blank:]]/, "", l) } l !~ ENVIRON["re"]' "$list" >"$list.new"
+    cat "$list.new" >"$list" && rm "$list.new"
+}
 gone=() missing=()
 for n in "${leave_out[@]}"; do
-    if grep -qx "$n" "$list"; then sed -i "/^${n//./\\.}\$/d" "$list"; gone+=("$n"); else missing+=("$n"); fi
+    if named "${n//./\\.}"; then drop "${n//./\\.}"; gone+=("$n"); else missing+=("$n"); fi
 done
 msg2 "Left out of the live ISO: %s" "${gone[*]:-nothing}"
 ((${#missing[@]} == 0)) || msg2 "Not in CachyOS's list any more (renamed or dropped?): %s (agros-trim.sh)" "${missing[*]}"
@@ -146,8 +153,8 @@ grep -q 'vmlinuz-linux-cachyos ' "$tmp/grub.cfg" || keep_lts "no main-kernel ent
 # (every kernel the menus boot after the changes is one the ISO still has: an LTS file under a name this doesn't know,
 # renamed to a kernel that doesn't exist, keeps the LTS kernel instead)
 for k in $(grep -oh 'vmlinuz-[A-Za-z0-9._-]*\|initramfs-[A-Za-z0-9._-]*\.img' "$tmp"/* | sed 's/^vmlinuz-//; s/^initramfs-//; s/\.img$//' | sort -u); do
-    [[ $k == linux-cachyos-lts* ]] || grep -qx "$k" "$list" || keep_lts "a boot entry would boot $k, which isn't in the ISO"
+    [[ $k == linux-cachyos-lts* ]] || named "${k//./\\.}" || keep_lts "a boot entry would boot $k, which isn't in the ISO"
 done
 for f in "${boot[@]}"; do cat "$tmp/${f##*/}" >"$p/$f"; done
-sed -i '/^linux-cachyos-lts\(-.*\)\{0,1\}$/d' "$list"
+drop 'linux-cachyos-lts(-.*)?'
 msg2 "Left out of the live ISO: the LTS kernel (its boot entries boot the main kernel)"

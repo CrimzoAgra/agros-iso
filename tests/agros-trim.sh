@@ -221,4 +221,15 @@ trim
 lts_kept "syslinux/archiso_sys-lts.cfg"
 grep -qx 'linux-cachyos-lts' "$p/$list" || fail "the LTS kernel left out while syslinux/archiso_sys-lts.cfg boots it"
 
+# The list read as mkarchiso reads it: a comment after a name, blanks around it (a line CachyOS writes so): left out
+# all the same, the LTS kernel's too, and the main kernel counted as in it
+fresh
+sed -i 's/^occt$/occt  # a stress test/; s/^vim$/  vim\t/; s/^linux-cachyos-lts$/linux-cachyos-lts # LTS/
+    s/^linux-cachyos$/linux-cachyos # the main one/' "$p/$list"
+trim
+names=$(sed 's/#.*//; s/[[:blank:]]//g; /^$/d' "$p/$list")
+for k in occt vim linux-cachyos-lts; do ! grep -qx "$k" <<<"$names" || fail "$k, written with a comment or blanks, not left out"; done
+grep -qx linux-cachyos <<<"$names" || fail "linux-cachyos, written with a comment, gone"
+! grep -q cachyos-lts "$p/grub/grub.cfg" || fail "the LTS kernel kept: the main kernel's line has a comment"
+
 echo "ok agros-trim"
