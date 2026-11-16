@@ -30,6 +30,8 @@ leave_out=(
     cloud-init                              # cloud server setup, never enabled
     cachyos-cli-installer-new               # CachyOS's text installer (it installs CachyOS, not AgrOS)
     edk2-shell                              # the UEFI Shell boot entry
+    nvme-cli sg3_utils sdparm               # disk admin tools (the installer's partitioning: kpmcore, smartmontools)
+    darkhttpd imwheel                       # Arch's test web server; an X11 mouse-wheel tool (the session is Wayland)
 )
 gone=() missing=()
 for n in "${leave_out[@]}"; do
