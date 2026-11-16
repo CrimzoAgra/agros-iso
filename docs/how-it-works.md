@@ -135,7 +135,8 @@ The AgrOS ones in `archiso/airootfs/`:
 ## What AgrOS changes from CachyOS's ISO
 
 - `archiso/pacman.conf`, `archiso/airootfs/etc/pacman.conf` and `pacman-more.conf` (the installed system's) get the
-  `[agros]` repo; `packages_desktop.x86_64` gets `agros-keyring`, whose key the installer trusts
+  `[agros]` repo, its database's signature required too (`SigLevel = Required DatabaseRequired`; `agros-system`'s
+  install adds the line on machines installed before); `packages_desktop.x86_64` gets `agros-keyring`, whose key the installer trusts
   (`calamares-online.sh`) and copies to the installed system.
 - `archiso/airootfs/usr/share/agros/netinstall.yaml`: CachyOS's package list (the installer package's
   `/etc/calamares/modules/netinstall.yaml`) plus the AgrOS group (hidden, selected and critical: `agros-keyring` and
