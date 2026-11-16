@@ -19,13 +19,19 @@ theirs=$(git rev-parse FETCH_HEAD)
 new=$(git rev-list --count "origin/main..$theirs")
 # pkgs <commit>: its ISO's package list, one per line
 pkgs() { git show "$1:$list" 2>/dev/null | sed 's/#.*//; s/[[:space:]]//g; /^$/d' | sort -u; }
+# open_pr: the number of the open pull request from "cachyos" into main (none: empty)
+open_pr() { gh pr list --head cachyos --base main --state open --json number -q '.[0].number'; }
+# (git as the sync, its merge commits' author)
+git_sync=(git -c user.name="AgrOS CachyOS sync" -c user.email="agros-sync@users.noreply.github.com")
 
+# pr <why>: the pull request from "cachyos" opened, or brought up to date
 pr() {
-    local why=$1 conflicts out body n title="CachyOS: $new new commit(s)"
-    if out=$(git merge-tree --write-tree --name-only --no-messages origin/main "$theirs"); then
+    local why=$1 conflicts tree body n title="CachyOS: $new new commit(s)"
+    # (with conflicts: the merged tree's id, then the files that conflict)
+    if tree=$(git merge-tree --write-tree --name-only --no-messages origin/main "$theirs"); then
         conflicts=
     else
-        conflicts=$(tail -n +2 <<<"$out")
+        conflicts=$(tail -n +2 <<<"$tree")
     fi
     body=$(mktemp)
     {
@@ -45,7 +51,7 @@ pr() {
         git diff --stat "origin/main...$theirs"
         echo '```'
     } >"$body"
-    n=$(gh pr list --head cachyos --base main --state open --json number -q '.[0].number')
+    n=$(open_pr)
     if [[ -n $n ]]; then
         gh pr edit "$n" --title "$title" --body-file "$body"
     else
@@ -63,10 +69,8 @@ case ${1:-} in
         if ! git merge-tree --write-tree --no-messages origin/main "$theirs" >/dev/null; then
             why="it conflicts with AgrOS's changes"
         else
-            git -c user.name="AgrOS CachyOS sync" -c user.email="agros-sync@users.noreply.github.com" \
-                checkout -q --detach origin/main
-            git -c user.name="AgrOS CachyOS sync" -c user.email="agros-sync@users.noreply.github.com" \
-                merge -q --no-ff --no-edit -m "Merge CachyOS's master ($new commit(s)): checked by the CachyOS sync" "$theirs"
+            "${git_sync[@]}" checkout -q --detach origin/main
+            "${git_sync[@]}" merge -q --no-ff --no-edit -m "Merge CachyOS's master ($new commit(s)): checked by the CachyOS sync" "$theirs"
             # (what AgrOS left out of CachyOS's list on purpose: in it at the last merge, not in AgrOS's)
             base=$(git merge-base origin/main "$theirs")
             back=$(comm -12 <(comm -23 <(pkgs "$base") <(pkgs origin/main)) <(pkgs HEAD) | paste -sd' ')
@@ -92,7 +96,7 @@ case ${1:-} in
         # (only forward: a push of main since, theirs kept, and this merge no longer on top of it)
         if git push -q origin "$commit:refs/heads/main"; then
             gh workflow run iso.yml --ref main
-            n=$(gh pr list --head cachyos --base main --state open --json number -q '.[0].number')
+            n=$(open_pr)
             [[ -z $n ]] || gh pr close "$n" --comment "Merged by the CachyOS sync, its ISO built first: $commit"
             echo "Merged into main: $commit"
         else
