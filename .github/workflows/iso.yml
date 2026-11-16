@@ -353,7 +353,8 @@ jobs:
           [ -n "$RCLONE_CONFIG_R2_ACCESS_KEY_ID" ] && [ -n "$R2_BUCKET" ] || { echo "::error::Add the R2_* secrets"; exit 1; }
           src_dir=$PWD
           . ./util-msg.sh && . ./util.sh
-          iso=$(newest_iso) && name=${iso##*/}
+          iso=$(newest_iso) && [ -n "$iso" ] || { echo "::error::No ISO in the build's files"; exit 1; }
+          name=${iso##*/}
           # (the ISO first, its checksum and signature after: a download in between gets the old ones for a few seconds)
           for ext in "" .sha256 .sig; do
             rclone copyto --retries 3 --s3-no-check-bucket \
