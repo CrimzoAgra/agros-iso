@@ -1,0 +1,28 @@
+name: Tests
+
+# tests/run.sh after each push of main (not of the docs alone), or by hand: the scripts on throwaway copies, nothing
+# built or published, a minute. The ISO workflow doesn't wait for it. (The CachyOS sync's pushes, made with GitHub's
+# token, start no workflow: its merges are tested at the next push)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!**.md'
+      - '!docs/**'
+      - '!manual/**'
+      - '!LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: tests/run.sh

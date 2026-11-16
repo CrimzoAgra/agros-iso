@@ -11,7 +11,8 @@ name: ISO
 on:
   push:
     branches: [main]
-    # (not for what doesn't go into the ISO or its build: the docs, the VM test; this workflow's own changes do)
+    # (not for what doesn't go into the ISO or its build: the docs, the VM test, the tests; this workflow's own changes
+    # do)
     # (also the files "What changed" counts: it reads this list, GitHub's rules, the last match wins)
     paths:
       - '**'
@@ -19,6 +20,7 @@ on:
       - '!docs/**'
       - '!manual/**'
       - '!testiso.sh'
+      - '!tests/**'
       - '!LICENSE'
       - '!.gitignore'
       - '!.github/**'
