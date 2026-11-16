@@ -3,7 +3,7 @@
 ## A machine to build on
 
 - Arch Linux or CachyOS.
-- About 20 GB of free disk space: the work folder while it builds (removed after, with `-w`), the ISO, about 3.6 GB
+- About 20 GB of free disk space: the work folder while it builds (removed after, with `-w`), the ISO, about 2.1 GB
   each time, and the packages pacman downloads for it, about 3-4 GB, kept in `/var/cache/pacman/pkg`. Building in RAM
   (`-r`) needs 14 GB free in `/tmp`, a tmpfs in RAM: by default it can grow to half the RAM, so about 32 GB of RAM.
 - sudo rights: the build runs as root.
