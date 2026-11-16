@@ -69,6 +69,14 @@ no_extract=(
     # the live system, and no display library of the driver loads them; installed systems get the whole driver)
     'usr/lib/libnvoptix.so*' 'usr/share/nvidia/nvoptix.bin' 'usr/lib/libnvidia-ngx*' 'usr/bin/nvidia-ngx-updater'
     'usr/lib/nvidia/wine/*'
+    # (Noto CJK's serif and its lightest and heaviest sans weights: nothing on the live system asks for them, and the
+    # installer's Chinese, Japanese and Korean names keep Regular, Medium and Bold)
+    'usr/share/fonts/noto-cjk/NotoSerifCJK-*' 'usr/share/fonts/noto-cjk/NotoSansCJK-Thin.ttc'
+    'usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc' 'usr/share/fonts/noto-cjk/NotoSansCJK-DemiLight.ttc'
+    'usr/share/fonts/noto-cjk/NotoSansCJK-Black.ttc'
+    # (firmware for Marvell's network switch chips, not a PC's; nouveau's older GSP firmware, 535: it loads 570.144
+    # first, kept)
+    'usr/lib/firmware/mrvl/prestera/*' 'usr/lib/firmware/nvidia/*-535.113.01.bin*'
 )
 # Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
 # (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf
@@ -89,7 +97,7 @@ noextract() {
     fi
 }
 noextract "$p/pacman.conf" "${no_extract[*]}" \
-    "in the live ISO: unused font styles, Hyprland's wallpapers, translations, man pages, docs"
+    "in the live ISO: unused fonts and firmware, Hyprland's wallpapers, translations, man pages, docs"
 noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
     "on installed systems: unused font styles, Hyprland's wallpapers, docs"
 
