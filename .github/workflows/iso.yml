@@ -70,10 +70,7 @@ jobs:
         env:
           SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
         run: |
-          [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the SF_SSH_KEY secret"; exit 1; }
-          install -d -m700 ~/.ssh
-          printf '%s\n' "$SF_SSH_KEY" | install -m600 /dev/stdin ~/.ssh/id_ed25519
-          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' >~/.ssh/known_hosts
+          .github/sf-ssh-key.sh ~/.ssh
           ./upload-iso.sh --check
 
   iso:
@@ -325,13 +322,10 @@ jobs:
           SF_API_KEY: ${{ secrets.SF_API_KEY }}
           SF_SSH_KEY: ${{ secrets.SF_SSH_KEY }}
         run: |
-          [ -n "$SF_SSH_KEY" ] || { echo "::error::Add the SF_SSH_KEY secret"; exit 1; }
           # (the SSH key only for this step, gone when it ends. Root's own folder, not ~: in a container job HOME is
           # /github/home, and ssh reads root's home from passwd)
           trap 'rm -f /root/.ssh/id_ed25519' EXIT
-          install -d -m700 /root/.ssh
-          printf '%s\n' "$SF_SSH_KEY" | install -m600 /dev/stdin /root/.ssh/id_ed25519
-          echo 'frs.sourceforge.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQD35Ujalhh+JJkPvMckDlhu4dS7WH6NsOJ15iGCJLC' >/root/.ssh/known_hosts
+          .github/sf-ssh-key.sh /root/.ssh
           # (--signed: never published unsigned. The newest ISO: the only one)
           # (tried 3 times: a dropped connection uploads it all again, rather than failing the run. Not retried when it
           # refuses the ISO, exit 65: unsigned, a bad checksum or another key's signature stay so)
