@@ -44,9 +44,19 @@ echo "  -> Left out of the live ISO: ${gone[*]:-nothing}"
 # system's own, airootfs/etc/pacman.conf, and so installed systems, get whole packages): the font styles nothing names
 # (foot.ini's "JetBrains Mono Nerd Font" and group.lua's "JetBrains Mono NF" are the JetBrainsMonoNerdFont-* files,
 # the shell's "CaskaydiaCove NF" the CaskaydiaCoveNerdFont-* ones, every icon "Material Symbols Rounded") and
-# Hyprland's own wallpapers (Caelestia's dots set disable_hyprland_logo; Caelestia draws its own). A pattern that
-# matches nothing any more (a package renamed its files) just leaves them in: a bigger ISO, nothing broken
+# Hyprland's own wallpapers (Caelestia's dots set disable_hyprland_logo; Caelestia draws its own); the programs'
+# translations (the live system is LANG=C.UTF-8, airootfs/etc/locale.conf: they'd never be read), but the installer's
+# and those it may show (Calamares's Python modules', kpmcore's and KDE's, Qt's, the keyboard layouts' names); man and
+# info pages (no man or info on the ISO to read them); docs and help pages (fish's kept: its `help` opens them). A
+# pattern that matches nothing any more (a package renamed its files) just leaves them in: a bigger ISO, nothing broken.
+# (pacman: a file's last matching pattern decides, `!` unpacks it after all, and * matches / too: each `!` after its
+# pattern)
 no_extract=(
+    'usr/share/locale/*' '!usr/share/locale/locale.alias' '!usr/share/locale/*/LC_MESSAGES/calamares*'
+    '!usr/share/locale/*/LC_MESSAGES/k*' '!usr/share/locale/*/LC_MESSAGES/*_qt.qm'
+    '!usr/share/locale/*/LC_MESSAGES/libplasma*' '!usr/share/locale/*/LC_MESSAGES/xkeyboard-config*'
+    'usr/share/man/*' 'usr/share/info/*'
+    'usr/share/doc/*' '!usr/share/doc/fish/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
     'usr/share/fonts/TTF/JetBrainsMonoNerdFontMono-*' 'usr/share/fonts/TTF/JetBrainsMonoNerdFontPropo-*'
     'usr/share/fonts/TTF/JetBrainsMonoNL*'
     'usr/share/fonts/TTF/CaskaydiaCoveNerdFontMono-*' 'usr/share/fonts/TTF/CaskaydiaCoveNerdFontPropo-*'
@@ -57,7 +67,7 @@ conf=$p/pacman.conf
 if [[ $(grep -c '^\[options\]$' "$conf" 2>/dev/null) == 1 ]]; then
     # (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
     sed -i "/^\[options\]\$/a NoExtract = ${no_extract[*]}" "$conf"
-    echo "  -> Not unpacked in the live ISO: unused font styles, Hyprland's wallpapers"
+    echo "  -> Not unpacked in the live ISO: unused font styles, Hyprland's wallpapers, translations, man pages, docs"
 else
     echo "  -> Every file unpacked: no single [options] in $conf (agros-trim.sh)"
 fi
