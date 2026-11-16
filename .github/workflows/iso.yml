@@ -297,7 +297,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ATTEMPT: ${{ github.run_attempt }}
         run: |
-          api() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/$1"; }
+          api() { curl -fsS --retry 3 --retry-all-errors -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/$1"; }
           latest=
           if [ "$ATTEMPT" -gt 1 ]; then
             newer=$(api "workflows/iso.yml/runs?branch=main&per_page=50" |
