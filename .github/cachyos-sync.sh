@@ -100,6 +100,9 @@ case ${1:-} in
             [[ -z $n ]] || gh pr close "$n" --comment "Merged by the CachyOS sync, its ISO built first: $commit"
             echo "Merged into main: $commit"
         else
+            # (only when it did: a push refused for anything else, a rule, the network, the token, fails the run)
+            git fetch -q origin main
+            ! git merge-base --is-ancestor origin/main "$commit" || { echo "main couldn't be moved to $commit" >&2; exit 1; }
             pr "main moved on while its ISO was built"
         fi
         ;;
