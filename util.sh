@@ -109,11 +109,12 @@ gate_list_or_ungated(){
 # gate_waits: what the ISO would get unapproved ("name version" lines)
 gate_waits(){
     local list plan name ver
-    # (each failure said where it happened: died, so buildiso.sh's exit trap adds no "unknown error")
-    list=$(gate_list_or_ungated) || { died=1; exit 1; }
+    # (each failure said where it happened, in its subshell: a bare die, so buildiso.sh's exit trap adds no "unknown
+    # error")
+    list=$(gate_list_or_ungated) || die
     [[ -n $list ]] || return 0
     # (not read through <(...): a die there only ends that subshell, and nothing checked passed as nothing waiting)
-    plan=$(gate_plan "$list") || { died=1; exit 1; }
+    plan=$(gate_plan "$list") || die
     while read -r name ver; do
         [[ -n $name ]] || continue
         grep -qxF -- "$name ${ver%-*}" <<<"$list" || echo "$name $ver"
@@ -128,7 +129,7 @@ check_gate(){
     # folder of its own, the build's user's alone, its names not to be guessed; removed by the build's end or stopped())
     gate_dir=$(mktemp -d --tmpdir agros-gate.XXXXXX) || die "No temporary folder for the approved list"
     gate_cache=$gate_dir/list
-    waits=$(gate_waits) || { died=1; exit 1; }
+    waits=$(gate_waits) || die
     [[ -n $waits ]] || return 0
     if [[ ${AGROS_UNGATED:-} == 1 ]]; then
         warning "Not checked by AgrOS's CI yet, built in all the same (AGROS_UNGATED): %s" "$(paste -sd, <<<"$waits")"
@@ -143,9 +144,9 @@ check_gate(){
 # gate_fetch <dir>: those packages downloaded into the live system's files (the installer's copy)
 gate_fetch(){
     local list
-    list=$(gate_list_or_ungated) || { died=1; exit 1; }
+    list=$(gate_list_or_ungated) || die
     [[ -n $list ]] || return 0
-    gate_plan "$list" "$1" >/dev/null || { died=1; exit 1; }
+    gate_plan "$list" "$1" >/dev/null || die
     # (built anyway, AGROS_UNGATED: the copy may be unapproved; the installer then puts it in only when its list says so)
     [[ ${AGROS_UNGATED:-} != 1 ]] || { sudo mkdir -p "$1" && sudo touch "$1/ungated"; }
 }
@@ -155,7 +156,7 @@ gate_fetch(){
 # stops
 gate_verify(){
     local f nv list name copied=
-    list=$(gate_list_or_ungated) || { died=1; exit 1; }
+    list=$(gate_list_or_ungated) || die
     [[ -n $list ]] || return 0
     for f in "$1"/*.pkg.tar.*; do
         [[ -e $f && $f != *.sig ]] || continue
