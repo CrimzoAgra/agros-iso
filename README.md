@@ -24,6 +24,9 @@ after each change to what goes into it here (not to the docs alone) or to AgrOS'
 with its `.sha256` and `.sig`, is also on [SourceForge](https://sourceforge.net/projects/agros-iso/files/iso/). To check
 a download, see [Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
 
+CachyOS's changes to its ISO are merged in by themselves each day, and only when they're safe; how that and every other
+update is kept from breaking anything: [How updates stay safe](https://github.com/CrimzoAgra/agros#how-updates-stay-safe).
+
 ## The AgrOS ISO Manual
 
 The manual lives in [`manual/`](manual/). To build the ISO yourself, start with [What you need](manual/02-requirements.md).
