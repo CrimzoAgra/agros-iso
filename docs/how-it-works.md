@@ -70,7 +70,9 @@ The AgrOS ones in `archiso/airootfs/`:
    75, which the ISO workflow reads as a wait, as its own gate step's) and the published ISO stays the download
    (`AGROS_UNGATED=1` builds anyway, with a warning, even with no list: a test build, `-ungated` in the ISO's name,
    never signed with AgrOS's key, which `upload-iso.sh` refuses, and `buildiso.sh -u` with it stops at once; its copy
-   marked `ungated`, which the installer never takes as approved). The list is fetched once a build, with a time limit
+   marked `ungated`, which the installer never takes as approved). The list is fetched once a build, with a time limit,
+   and taken only with a good signature by AgrOS's key beside it (`agros-approved.sig`, agros's CI signs it;
+   `verify_agros_sig`, against `agros.asc` alone): none, or a bad one, stops the build as a list it can't fetch does
    (a file the later steps read, in a folder of its own; with `AGROS_UNGATED`, none found is remembered too). Those packages are also downloaded into the live system's files (`/opt/agros/gate`, `gate_fetch`, as
    the profile is set up: step 3; those packages alone, not what they need) for the installer, and checked once the
    ISO is made, before it takes its name (`gate_verify`, on mkarchiso's own tree, what went into the ISO): only gated
@@ -242,7 +244,9 @@ as the partition names, from the palette and not the stylesheet.
   same. What it did is in the new system's `/var/log/agros-gate-install.log`. AgrOS's per-user package hooks
   (hyprbars built for each account) don't run in it (`AGROS_NO_USER_HOOKS`): the first login does that. The new
   system's root is Calamares's `${ROOT}`; the approved list's address comes from the live system's own `pacman.conf`
-  (the new system's includes the gate's file, which the live system lacks), fetched with a few tries. The copy goes in
+  (the new system's includes the gate's file, which the live system lacks), fetched with a few tries, and taken only
+  with a good signature by AgrOS's key beside it (`agros-approved.sig`, checked with `gpgv` against `agros-keyring`'s
+  key file alone): with none, or a bad one, it's as unreachable, said. The copy goes in
   only when it's approved itself: on the list, or, with the list unreachable, from a build that checked it (a test
   build's copy, marked `ungated`, never). A gated package installed that the copy hasn't (an ISO built before it was
   gated), not approved, is said, and held by the new system's updates. pacman there is never cut off (interrupted, it

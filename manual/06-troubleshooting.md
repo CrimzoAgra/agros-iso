@@ -20,6 +20,11 @@ approved it yet. The build waits for that, usually the same day: build again lat
 repo) can't be reached, or agros's CI hasn't published it yet (the first time: push agros first and let its CI run
 once). Check your connection and `https://crimzoagra.github.io/agros/x86_64/agros-approved`.
 
+**"AgrOS's approved upstream versions have no good signature by AgrOS's key".** The approved list was fetched but
+its signature (`agros-approved.sig`, beside it) is missing or doesn't check out against `agros.asc`: agros's CI hasn't
+signed it yet (push agros and let its CI run once), Pages still serves an older copy of one of the two (build again in
+a few minutes), or something between you and the repo changed it. The build doesn't go on without it.
+
 **Packages from `[agros]` aren't found.** The ISO's packages come from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`). Check that it's published and that you can reach it.
 
