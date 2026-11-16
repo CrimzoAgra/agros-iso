@@ -306,12 +306,20 @@ So the repo has to be published before you build: the build's pacman reads it, a
 ## Following CachyOS
 
 `upstream` is `https://github.com/CachyOS/CachyOS-Live-ISO`. Each day the CachyOS sync workflow
-(`.github/workflows/cachyos-sync.yml`, its script `.github/cachyos-sync.sh`) pushes CachyOS's `master` as the branch
-`cachyos` and opens a pull request from it into `main`, or updates the open one. The pull request lists their new
-commits, the files they change, and those that conflict with AgrOS's changes. It is never merged by the workflow:
-a change of theirs in a spot AgrOS never touched merges cleanly, and could bring back what AgrOS left out on purpose
-(KDE's apps, their installer from staging), so each one is read first. A pull request with no conflicts can be
-merged on GitHub; one with conflicts is merged by hand:
+(`.github/workflows/cachyos-sync.yml`, its script `.github/cachyos-sync.sh`) takes in their new commits by itself
+when that's safe:
+
+1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
+   `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
+   of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
+   `kf6*`, `breeze*`), and AgrOS's own installer (`agros/cachyos-calamares-next`) stays.
+2. That merge's ISO is built (`iso.yml` with `check`: nothing published).
+3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead) and the ISO
+   workflow is started, which publishes it as after any push.
+4. Anything else (a conflict, a package check, the ISO not building, its Hyprland waiting for AgrOS's check): a
+   pull request from `cachyos` into `main`, opened or brought up to date, lists their commits, the files they change,
+   those that conflict, and why it wasn't merged by itself. GitHub notifies of it. Merged on GitHub when it has no
+   conflicts; otherwise by hand:
 
 ```bash
 git pull upstream master

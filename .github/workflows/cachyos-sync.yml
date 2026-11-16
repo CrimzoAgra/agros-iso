@@ -1,9 +1,9 @@
 name: CachyOS sync
 
-# CachyOS's ISO repo, what this one is based on, followed: their new commits each day as a pull request into main, never
-# merged by this. Each one is read before it goes in: a change of theirs in a spot AgrOS never touched merges cleanly,
-# and could bring back what AgrOS left out on purpose (KDE's apps, their installer from staging). The branch "cachyos"
-# is their master as it is; the pull request says which files conflict with AgrOS's changes (resolved by hand)
+# CachyOS's ISO repo, what this one is based on, followed each day (.github/cachyos-sync.sh): their new commits merged
+# into main by themselves when the merge has no conflicts, keeps what AgrOS changed on purpose (none of the packages it
+# left out back, no KDE ones, its own installer) and its ISO builds; then the ISO is published as after any push. Else
+# a pull request from the branch "cachyos" (their master as it is) says what they change and why it wasn't merged.
 # (needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests")
 on:
   schedule:
@@ -13,19 +13,55 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: cachyos-sync
 
 jobs:
-  sync:
+  prepare:
+    runs-on: ubuntu-26.04
+    outputs:
+      candidate: ${{ steps.prepare.outputs.candidate }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Their new commits, merged or as a pull request
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/cachyos-sync.sh prepare
+
+  # The merge's ISO built first, nothing published
+  check:
+    needs: prepare
+    if: needs.prepare.outputs.candidate != ''
+    uses: ./.github/workflows/iso.yml
+    with:
+      ref: ${{ needs.prepare.outputs.candidate }}
+      check: true
+
+  merge:
+    needs: [prepare, check]
+    if: ${{ always() && needs.prepare.outputs.candidate != '' }}
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Their new commits, as a pull request
+      - name: Into main, or a pull request
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: .github/cachyos-sync.sh
+          CHECK: ${{ needs.check.result }}
+          BUILT: ${{ needs.check.outputs.built }}
+          CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$CHECK" = success ] && [ "$BUILT" = true ]; then
+            .github/cachyos-sync.sh merge "$CANDIDATE"
+          elif [ "$CHECK" = success ]; then
+            .github/cachyos-sync.sh pr "its ISO waits for AgrOS's check of a new Hyprland (tried again tomorrow)"
+          else
+            .github/cachyos-sync.sh pr "its ISO didn't build ($RUN_URL)"
+          fi

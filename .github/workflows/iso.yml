@@ -29,11 +29,23 @@ on:
         description: Publish even if nothing changed
         type: boolean
         default: false
+  # (the CachyOS sync's check, cachyos-sync.yml: <ref>, its merge of CachyOS's changes, built, nothing published)
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+      check:
+        type: boolean
+        default: true
+    outputs:
+      built:
+        value: ${{ jobs.iso.outputs.built }}
 
 # One at a time; a newer one waits for it (the newest commit is the one published last). Per branch: a run from
 # another one (skipped below) took the place of main's waiting one
 concurrency:
-  group: iso-${{ github.ref }}
+  group: iso-${{ github.ref }}${{ inputs.check && '-check' || '' }}
   cancel-in-progress: false
 
 permissions:
@@ -46,7 +58,7 @@ env:
 jobs:
   # SourceForge reached with its key, before the build (only that key here: nothing else runs)
   sourceforge:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && !inputs.check
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
@@ -65,6 +77,7 @@ jobs:
 
   iso:
     needs: sourceforge
+    # (a check publishes nothing: SourceForge's key not needed)
     outputs:
       built: ${{ steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true' }}
       key: ${{ steps.what.outputs.key }}
@@ -74,7 +87,7 @@ jobs:
       # (privileged: mkarchiso's mounts)
       options: --privileged
     # (a manual run from another branch would make that branch's ISO the download)
-    if: github.ref == 'refs/heads/main'
+    if: ${{ always() && github.ref == 'refs/heads/main' && (needs.sourceforge.result == 'success' || inputs.check) }}
     timeout-minutes: 210
     defaults:
       run:
@@ -93,6 +106,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          ref: ${{ inputs.ref || github.ref }}
       - name: What changed
         id: what
         env:
@@ -157,7 +171,7 @@ jobs:
       # before must publish again, not count as done)
       - name: Already published?
         id: done
-        if: ${{ !inputs.force && github.event_name != 'push' }}
+        if: ${{ !inputs.force && !inputs.check && github.event_name != 'push' }}
         uses: actions/cache/restore@v6
         with:
           path: /tmp/published
@@ -215,7 +229,7 @@ jobs:
           elif [ "$rc" != 0 ]; then
             exit "$rc"
           fi
-      - if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true'
+      - if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true' && !inputs.check
         uses: actions/upload-artifact@v7
         with:
           name: iso
@@ -227,7 +241,7 @@ jobs:
 
   publish:
     needs: iso
-    if: needs.iso.outputs.built == 'true'
+    if: needs.iso.outputs.built == 'true' && !inputs.check
     # (its own runs listed: Still the newest?)
     permissions:
       contents: read
