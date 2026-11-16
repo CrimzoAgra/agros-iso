@@ -24,7 +24,20 @@ server=$(pacman-conf --repo agros Server 2>/dev/null | head -1)
 list=
 # (a few tries: one dropped request counted as "unreachable" put the ISO's older copy over an approved newest)
 # (a transfer that failed partway: nothing of it taken, a line cut short could read as another version)
-[[ -n $server ]] && { list=$(curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors "$server/agros-approved?t=$(date +%s)" 2>/dev/null) || list=; }
+# (taken only with a good signature by AgrOS's key beside it, agros-approved.sig, checked against agros-keyring's key
+# file alone: none, or a bad one (a mirror or a network in between that changed it), and it's as an unreachable list)
+tmp=$(mktemp -d 2>/dev/null) || tmp=
+trap '[[ -z $tmp ]] || rm -rf "$tmp"' EXIT
+stamp=$(date +%s)
+if [[ -n $server && -n $tmp ]] &&
+    curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$tmp/list" "$server/agros-approved?t=$stamp" 2>/dev/null; then
+    if curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$tmp/list.sig" "$server/agros-approved.sig?t=$stamp" 2>/dev/null &&
+        gpgv --keyring "${AGROS_GATE_KEYRING:-/usr/share/pacman/keyrings/agros.gpg}" "$tmp/list.sig" "$tmp/list" >/dev/null 2>&1; then
+        list=$(cat "$tmp/list")
+    else
+        say "the approved list has no good signature by AgrOS's key ($server/agros-approved.sig): taken as unreachable"
+    fi
+fi
 grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" && list=
 # installed <name>: its version on the installed system (not there: empty)
 installed() { pacman -Q --dbpath "$root/var/lib/pacman" -- "$1" 2>/dev/null | cut -d' ' -f2; }
