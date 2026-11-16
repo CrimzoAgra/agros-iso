@@ -189,7 +189,8 @@ check_calamares_commands(){
 # The fingerprint of the first key in a key file (agros.asc): the one place AgrOS's key is named, for the build's
 # signature and GitHub's pacman keyring. (Through a throwaway gpg home: as root, it made root's ~/.gnupg)
 key_fpr() {
-    local h; h=$(mktemp -d)
+    # (no temporary folder: no fingerprint, which every caller takes as no key)
+    local h; h=$(mktemp -d) || return 0
     gpg --homedir "$h" --batch --with-colons --show-keys "$1" 2>/dev/null | awk -F: '$1 == "fpr" { print $10; exit }'
     rm -rf "$h"
 }
@@ -231,7 +232,7 @@ verify_agros_sig() {
     local h fpr st
     fpr=$(key_fpr "$src_dir/agros.asc")
     [[ -n $fpr && -f $1.sig ]] || return 1
-    h=$(mktemp -d)
+    h=$(mktemp -d) || return 1
     gpg --homedir "$h" --batch --dearmor -o "$h/agros.gpg" "$src_dir/agros.asc" 2>/dev/null &&
         st=$(LC_ALL=C gpgv --keyring "$h/agros.gpg" --status-fd 1 "$1.sig" "$1" 2>/dev/null) || st=
     rm -rf "$h"
