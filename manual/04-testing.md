@@ -10,8 +10,10 @@ run it as yourself (no sudo):
 
 The first time, it creates a VM called `AgrOS test` in `~/vmware/AgrOS-test` (`AGROS_VM=<file>.vmx` for another): UEFI
 firmware, 4 CPUs, 8 GB of RAM, 3D acceleration, a 64 GB NVMe disk and a bridged network. Bridged, not NAT: VMware's NAT
-cut off downloads from CachyOS's mirror, and the installer's hardware detection (chwd) failed. After that it reuses
-the same VM. Each run puts the newest ISO in the VM's DVD drive and starts it.
+cut off downloads from CachyOS's mirror, and the installer's hardware detection (chwd) failed. Its mouse is an ordinary
+one, as a PC's (click into the VM to use it, Ctrl+Alt to get your pointer back): with VMware's usual one, the window
+froze for about a second each time a dragged window was held at the screen's edge (AgrOS's manual, *Troubleshooting*).
+After that it reuses the same VM. Each run puts the newest ISO in the VM's DVD drive and starts it.
 
 There's no fixed boot order: the VM boots its disk when something is installed there, and the ISO otherwise, as a PC
 does. So after an install, restarting brings up the installed system. To install again, use `--fresh`, or pick the DVD

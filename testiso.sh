@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Boots the newest ISO in out/desktop/ in a VMware Workstation VM: puts it in the VM's DVD drive and starts it. The VM
 # (AgrOS-test, ~/vmware/AgrOS-test; AGROS_VM=<.vmx> for another) is made the first time: UEFI, 4 CPUs, 8 GB of RAM,
-# 3D, a 64 GB NVMe disk, a bridged network (VMware's NAT cut off downloads from CachyOS's CDN, so chwd failed to install).
+# 3D, a 64 GB NVMe disk, a bridged network (VMware's NAT cut off downloads from CachyOS's CDN, so chwd failed to install),
+# a relative mouse as a PC's (VMware's own, absolute, froze the window about a second each time a dragged window's
+# pointer was held at Caelestia's border: the guest's warp moved the host's pointer; click in, Ctrl+Alt to let go).
 # It boots its disk when something is installed there, the DVD otherwise (no fixed boot order: the firmware's own, as a
 # PC's: after an install, the installed system comes up).
 #   ./testiso.sh           the newest ISO, the VM as it is
@@ -65,6 +67,9 @@ ethernet0.virtualDev = "vmxnet3"
 ethernet0.addressType = "generated"
 usb.present = "TRUE"
 usb_xhci.present = "TRUE"
+vmmouse.present = "FALSE"
+mouse.vusb.enable = "TRUE"
+mouse.vusb.useBasicMouse = "TRUE"
 sound.present = "TRUE"
 sound.virtualDev = "hdaudio"
 sound.autoDetect = "TRUE"
