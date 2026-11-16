@@ -227,7 +227,8 @@ jobs:
           elif [ "$rc" != 0 ]; then
             exit "$rc"
           fi
-      - if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true' && !inputs.check
+      - name: The ISO, for the publish job
+        if: steps.done.outputs.cache-hit != 'true' && steps.gate.outputs.held != 'true' && steps.build.outputs.held != 'true' && !inputs.check
         uses: actions/upload-artifact@v7
         with:
           name: iso
@@ -364,7 +365,10 @@ jobs:
       - name: Mark it published
         if: steps.newest.outputs.ok == 'true'
         run: mkdir -p /tmp/published && echo "$GITHUB_SHA" >/tmp/published/commit
-      - if: steps.newest.outputs.ok == 'true'
+      # (the iso job's key, which its "Already published?" looks up: a run started by AgrOS's CI or by hand then skips
+      # the same ISO)
+      - name: Remembered as published
+        if: steps.newest.outputs.ok == 'true'
         uses: actions/cache/save@v6
         with:
           path: /tmp/published
