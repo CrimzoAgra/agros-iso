@@ -126,6 +126,12 @@ for f in "${boot[@]}"; do
         /^LABEL cos64cur$/ { lskip = 1 }
         lskip && /^$/ { lskip = 0; next }
         !skip && !lskip' "$p/$f" | sed 's/linux-cachyos-lts/linux-cachyos/g' >"$tmp/${f##*/}"
+    # (only those entries gone: one whose end isn't where it was, a closing brace or blank line CachyOS changed, took
+    # the entries after it too, the fallback ones)
+    entries="^[[:blank:]]*\(menuentry\|label\)[[:blank:]]"
+    going=$(grep -c "^menuentry .*--id .cachyos-lts. {\$\|^LABEL cos64cur\$" "$p/$f" || true)
+    (($(grep -ci "$entries" "$p/$f" || true) - $(grep -ci "$entries" "$tmp/${f##*/}" || true) == going)) ||
+        keep_lts "$f: an entry's end isn't where it was (the entries after it would go with it)"
 done
 if left=$(grep -l 'cachyos-lts' "$tmp"/* | paste -sd' ') && [[ -n $left ]]; then
     keep_lts "still named in $left after the changes"

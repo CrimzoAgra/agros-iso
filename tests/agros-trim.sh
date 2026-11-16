@@ -200,4 +200,17 @@ for empty in '' '#'; do
     lts_kept "an empty list${empty:+ (all commented out)}"
 done
 
+# An entry's end not where it was (a blank line or closing brace CachyOS changed): the entries after it not taken
+# with it (the BIOS fallback, GRUB's), the LTS kernel kept
+fresh
+sed -i '/^LABEL cos64cur$/,/^$/{/^$/d}' "$p/syslinux/archiso_sys-linux.cfg"
+trim
+grep -q '^LABEL cos64fb$' "$p/syslinux/archiso_sys-linux.cfg" || fail "the BIOS fallback entry went with the current-kernel one"
+lts_kept "syslinux/archiso_sys-linux.cfg"
+fresh
+sed -i "/--id 'cachyos-lts' {/,/^}\$/s/^}\$/} /" "$p/grub/grub.cfg"
+trim
+grep -q "^menuentry .*--id 'cachyos-fallback' {" "$p/grub/grub.cfg" || fail "GRUB's fallback entry went with the LTS one"
+lts_kept "grub/grub.cfg"
+
 echo "ok agros-trim"
