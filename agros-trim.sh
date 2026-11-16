@@ -19,9 +19,12 @@
 # "(agros-trim.sh)": agros's weekly size watch (ci/sizes.sh there) runs this too and puts those lines in the Friday
 # status, so keep that ending on them
 set -euo pipefail
+src_dir=$(dirname "$(readlink -f "$0")")
+# (the build's messages: msg2, die)
+source "$src_dir/util-msg.sh"
 p=${1:?usage: agros-trim.sh <the copy of archiso/ the build uses>}
 list=$p/packages.x86_64
-[[ -f $list ]] || { echo "agros-trim.sh: no $list" >&2; exit 1; }
+[[ -f $list ]] || die "agros-trim.sh: no %s" "$list"
 
 leave_out=(
     occt                                    # a CPU/GPU stress test
@@ -40,8 +43,8 @@ gone=() missing=()
 for n in "${leave_out[@]}"; do
     if grep -qx "$n" "$list"; then sed -i "/^${n//./\\.}\$/d" "$list"; gone+=("$n"); else missing+=("$n"); fi
 done
-echo "  -> Left out of the live ISO: ${gone[*]:-nothing}"
-((${#missing[@]} == 0)) || echo "  -> Not in CachyOS's list any more (renamed or dropped?): ${missing[*]} (agros-trim.sh)"
+msg2 "Left out of the live ISO: %s" "${gone[*]:-nothing}"
+((${#missing[@]} == 0)) || msg2 "Not in CachyOS's list any more (renamed or dropped?): %s (agros-trim.sh)" "${missing[*]}"
 
 # Files inside packages the live session never uses, never unpacked (NoExtract, in the build's pacman.conf: the live
 # system's own, airootfs/etc/pacman.conf, and so installed systems, get whole packages): the font styles nothing names
@@ -90,22 +93,23 @@ installed=(
     'usr/share/doc/*' '!usr/share/doc/fish/*' '!usr/share/doc/hplip*/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
     "${unused[@]}"
 )
+# add_noextract <pacman.conf> <patterns> <where, for the log>
 # (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
-noextract() {
+add_noextract() {
     if [[ $(grep -c '^\[options\]$' "$1" 2>/dev/null) == 1 ]]; then
         sed -i "/^\[options\]\$/a NoExtract = $2" "$1"
-        echo "  -> Not unpacked $3"
+        msg2 "Not unpacked %s" "$3"
     else
-        echo "  -> Every file unpacked $3: no single [options] in $1 (agros-trim.sh)"
+        msg2 "Every file unpacked %s: no single [options] in %s (agros-trim.sh)" "$3" "$1"
     fi
 }
-noextract "$p/pacman.conf" "${no_extract[*]}" \
+add_noextract "$p/pacman.conf" "${no_extract[*]}" \
     "in the live ISO: unused fonts and firmware, Hyprland's wallpapers, translations, man pages, docs"
-noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
+add_noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
     "on installed systems: unused font styles, Hyprland's wallpapers, docs"
 
 boot=(grub/grub.cfg grub/loopback.cfg syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg)
-keep_lts() { echo "  -> The LTS kernel kept in the live ISO: $1 (agros-trim.sh)"; exit 0; }
+keep_lts() { msg2 "The LTS kernel kept in the live ISO: %s (agros-trim.sh)" "$1"; exit 0; }
 for f in "${boot[@]}"; do [[ -f $p/$f ]] || keep_lts "$f is gone"; done
 for f in grub/grub.cfg grub/loopback.cfg; do
     grep -q "^menuentry .*--id 'cachyos-lts' {\$" "$p/$f" || keep_lts "no LTS entry in $f"
@@ -134,4 +138,4 @@ for k in $(grep -oh 'vmlinuz-[A-Za-z0-9._-]*\|initramfs-[A-Za-z0-9._-]*\.img' "$
 done
 for f in "${boot[@]}"; do cat "$tmp/${f##*/}" >"$p/$f"; done
 sed -i '/^linux-cachyos-lts\(-.*\)\{0,1\}$/d' "$list"
-echo "  -> Left out of the live ISO: the LTS kernel (its boot entries boot the main kernel)"
+msg2 "Left out of the live ISO: the LTS kernel (its boot entries boot the main kernel)"

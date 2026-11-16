@@ -9,7 +9,7 @@
 # GNU General Public License for more details.
 
 disable_colors(){
-    # (empty, not unset: upload-iso.sh and testiso.sh source this under set -u)
+    # (empty, not unset: upload-iso.sh, testiso.sh and agros-trim.sh source this under set -u)
     ALL_OFF='' BOLD='' BLUE='' GREEN='' RED='' YELLOW=''
 }
 
