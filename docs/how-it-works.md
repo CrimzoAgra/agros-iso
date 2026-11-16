@@ -341,6 +341,12 @@ git pull upstream master
 The workflow needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull
 requests".
 
+GitHub turns a public repo's scheduled workflows off after 60 days without a commit, and a quiet CachyOS can go that
+long with nothing merged. Once a month `.github/workflows/keepalive.yml` turns every scheduled workflow here (the sync,
+itself) on again through GitHub's API (`gh api -X PUT repos/<repo>/actions/workflows/<file>/enable`, with
+`actions: write`), as keepalive-workflow v2 does: no dummy commits. That it works can only be seen once 60 days pass
+with no commit; until then agros's Friday status, which says a daily run not seen for 3 days, is what says it stopped.
+
 When CachyOS changes its package list, update `netinstall.yaml` the same way. After a new CachyOS installer, check the
 Partitions and Packages pages and the language list: the installer's fixes are plain text swaps in the agros repo's CI,
 each checked after (one an upstream rewrite no longer fits holds the published installer back, said in agros's `held`
