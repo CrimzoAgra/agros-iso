@@ -84,7 +84,7 @@ gpg --verify agros-desktop-linux-YYMMDD-HHMM.iso.sig agros-desktop-linux-YYMMDD-
 ## Publishing the ISO
 
 `upload-iso.sh` puts an ISO on [SourceForge](https://sourceforge.net), where people can download it, as other distros do
-(GitHub takes at most 2 GB a file; the ISO is about 3.6). Once it's set up, **GitHub publishes a new ISO by itself after
+(GitHub takes at most 2 GB a file; the ISO is about 2.1). Once it's set up, **GitHub publishes a new ISO by itself after
 each change** (below); `upload-iso.sh` also works on its own.
 
 ### Setting it up, once
@@ -118,9 +118,9 @@ each change** (below); `upload-iso.sh` also works on its own.
    in SourceForge's SSH Settings as in step 2; and, for the README's download on Cloudflare R2, `R2_ACCOUNT_ID`,
    `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` (an API token for that bucket only, read and write) and `R2_BUCKET`.
    Neither key may have a passphrase (nothing on GitHub can type it;
-   publishing then fails at signing, or at SourceForge's check). GitHub gets a signing subkey of AgrOS's key, not the
-   key itself: should the secret ever leak, that subkey is revoked and the key, which AgrOS installs trust, stays. In
-   bash (not fish), with `<fpr>` AgrOS's key's fingerprint:
+   publishing then fails at signing, or at SourceForge's check). Today GitHub has AgrOS's key itself (its only
+   copy). A signing subkey instead, with the key kept offline, would let a leaked secret be revoked while the key
+   AgrOS installs trust stays; to move to one, in bash (not fish), with `<fpr>` AgrOS's key's fingerprint:
 
    ```bash
    # Once, if the key has no signing subkey yet (gpg -K <fpr> shows no [S] under "ssb"); then agros.asc here and the
