@@ -65,6 +65,10 @@ no_extract=(
     'usr/share/man/*' 'usr/share/info/*'
     'usr/share/doc/*' '!usr/share/doc/fish/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
     "${unused[@]}"
+    # (NVIDIA's ray tracing (OptiX) and DLSS (NGX, and its Wine/Proton side): for games and 3D renderers only, none on
+    # the live system, and no display library of the driver loads them; installed systems get the whole driver)
+    'usr/lib/libnvoptix.so*' 'usr/share/nvidia/nvoptix.bin' 'usr/lib/libnvidia-ngx*' 'usr/bin/nvidia-ngx-updater'
+    'usr/lib/nvidia/wine/*'
 )
 # Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
 # (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf
