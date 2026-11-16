@@ -23,6 +23,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
 | `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main` (not one of only docs), or AgrOS's packages changed (agros's CI starts it after publishing them); three jobs: `sourceforge` checks SourceForge's key; `iso` builds with no secrets (it runs packages' install scripts as root; `AGROS_SIGN_LATER` leaves signing to the next job); `publish` signs and uploads (to SourceForge, and to Cloudflare R2 as `agros-latest.iso`, the README's download), running only official Arch packages' scripts (the key kept from the build's, not the ISO checked: it's signed as built), and, on a re-run, only if no newer run has published since. See [Published by itself](../manual/03-building.md#published-by-itself) |
 | `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
+| `tests/` | `tests/run.sh` (or `tests/run.sh <name>...`): the scripts on throwaway copies, nothing built (`agros-trim.sh` on copies of the profile's menus, package list and `pacman.conf` files in `tests/fixtures/profile`, and on the repo's own `archiso/`; `newest_iso`; the CachyOS sync's `merge` on throwaway repos; `upload-iso.sh` under sudo, a dry run, skipped without `sudo -n`). Run on Linux, after each push of `main` by `.github/workflows/tests.yml` (not by the CachyOS sync's merges: pushed with GitHub's token, they start no workflow); the ISO workflow doesn't wait for it. A failing `agros-trim` on the repo's own profile after a CachyOS merge: the trim no longer fits their menus (the ISO keeps the LTS kernel) |
 | `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with zstd (level 19), file permissions |
 | `archiso/packages_desktop.x86_64` | The live system's packages (copied to `packages.x86_64` in the build's copy of the profile) |
 | `archiso/pacman.conf` | The repos the live system is built from, `[agros]` included |
@@ -321,8 +322,9 @@ when that's safe:
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
    `kf6*`, `breeze*`), and AgrOS's own installer (`agros/cachyos-calamares-next`) stays.
 2. That merge's ISO is built (`iso.yml` with `check`: nothing published).
-3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead) and the ISO
-   workflow is started, which publishes it as after any push.
+3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead; a push refused for
+   anything else, a rule or the token, fails the run) and the ISO workflow is started, which publishes it as after any
+   push.
 4. Anything else (a conflict, a package check, the ISO not building, its Hyprland waiting for AgrOS's check): a
    pull request from `cachyos` into `main`, opened or brought up to date, lists their commits, the files they change,
    those that conflict, and why it wasn't merged by itself. GitHub notifies of it. Merged on GitHub when it has no
