@@ -26,10 +26,12 @@ list=
 # (a transfer that failed partway: nothing of it taken, a line cut short could read as another version)
 [[ -n $server ]] && { list=$(curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors "$server/agros-approved?t=$(date +%s)" 2>/dev/null) || list=; }
 grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" && list=
+# installed <name>: its version on the installed system (not there: empty)
+installed() { pacman -Q --dbpath "$root/var/lib/pacman" -- "$1" 2>/dev/null | cut -d' ' -f2; }
 need=() targets=() copied=" " differs=" "
 for f in "${pkgs[@]}"; do
     read -r name ver < <(pacman -Qp "$f" 2>/dev/null) || continue
-    have=$(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2)
+    have=$(installed "$name")
     # (one the installed system doesn't have: not added; the rest keep why they were installed)
     [[ -n $have ]] || continue
     targets+=("$f")
@@ -49,7 +51,7 @@ missing=()
 if [[ -n $list ]]; then
     while read -r name; do
         [[ $copied == *" $name "* ]] && continue
-        have=$(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2)
+        have=$(installed "$name")
         [[ -n $have ]] && ! grep -qxF -- "$name ${have%-*}" <<<"$list" && missing+=("$name $have")
     done < <(cut -d' ' -f1 <<<"$list" | sort -u)
 fi
@@ -86,7 +88,7 @@ now=() old=()
 for f in "${targets[@]}"; do
     read -r name ver < <(pacman -Qp "$f" 2>/dev/null) || continue
     [[ $differs == *" $name "* ]] || continue  # (the same before: nothing to say of it)
-    if [[ $(pacman -Q --dbpath "$root/var/lib/pacman" -- "$name" 2>/dev/null | cut -d' ' -f2) == "$ver" ]]; then now+=("$name"); else old+=("$name"); fi
+    if [[ $(installed "$name") == "$ver" ]]; then now+=("$name"); else old+=("$name"); fi
 done
 if ((!${#old[@]})); then
     say "the ISO's Hyprland installed"
