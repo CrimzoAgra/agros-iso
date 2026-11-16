@@ -3,6 +3,11 @@
 # AgrOS: notifications through agros-scripts' notify-when-up, in the background: at login the notification server
 # (Caelestia, no D-Bus activation) may not be up yet, and it tries again for up to a minute. (9>&-: not holding the lock)
 notify() { /usr/lib/agros/bin/notify-when-up "$@" >/dev/null 2>&1 9>&- & }
+# AgrOS: online as the install needs it (NetworkManager's own check: full connectivity), and the two notices said
+# while it gets ready (offline: what to do; online: that it's coming, as nothing shows until its window opens)
+online() { [[ $(nmcli networking connectivity check 2>/dev/null) == full ]]; }
+notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet to install" "The installer opens once you're connected."; }
+notify_getting_ready() { notify -a AgrOS -i agros-logo "Getting the installer ready"; }
 
 # AgrOS: the installer not started, said in a notification (its one way of failing, before anything touched the disks)
 not_set_up() {
@@ -32,22 +37,20 @@ main() {
                 flock -n 9 && break
             done
             # (30 s and still no window, nor its end: a slow machine; said, rather than nothing)
-            flock -n 9 || { notify -a AgrOS -i agros-logo "Getting the installer ready"; exit 0; }
-        elif [[ $(nmcli networking connectivity check 2>/dev/null) != full ]]; then
-            notify -a AgrOS -i network-wireless "Connect to the internet to install" "The installer opens once you're connected."
+            flock -n 9 || { notify_getting_ready; exit 0; }
+        elif ! online; then
+            notify_offline
             exit 0
         else
-            notify -a AgrOS -i agros-logo "Getting the installer ready"
+            notify_getting_ready
             exit 0
         fi
     fi
     # Online first: it opens at login, before a Wi-Fi user could connect, and the clock and keys below come from the
     # internet. Not connected: said once, then checked every 2 s for up to 5 minutes (the keyring step below fails
     # only after that, with its own notification)
-    online() { [[ $(nmcli networking connectivity check 2>/dev/null) == full ]]; }
     if ! online; then
-        notify -a AgrOS -i network-wireless "Connect to the internet to install" \
-            "The installer opens once you're connected."
+        notify_offline
         for _ in {1..150}; do
             sleep 2
             online && break
@@ -56,7 +59,7 @@ main() {
     # AgrOS: up to a minute or two of setup (the clock, the package keys) before its window opens: said, or it looked
     # like it never started (once connected: offline, the two came at once; still offline after the wait, the keyring
     # step's own notification says it couldn't be set up)
-    online && notify -a AgrOS -i agros-logo "Getting the installer ready"
+    online && notify_getting_ready
 
     # The clock synced first (bounded: no NTP server reached in 30 s, it goes on): with a wrong clock the keys read as
     # "created in the future", and the keyring checks below fail
