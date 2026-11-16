@@ -213,4 +213,12 @@ trim
 grep -q "^menuentry .*--id 'cachyos-fallback' {" "$p/grub/grub.cfg" || fail "GRUB's fallback entry went with the LTS one"
 lts_kept "grub/grub.cfg"
 
+# Another menu file booting the LTS kernel (one CachyOS adds, or its entries moved there): kept, else that entry would
+# boot a kernel gone from the ISO
+fresh
+printf 'LABEL cos64lts\nLINUX /%%INSTALL_DIR%%/boot/%%ARCH%%/vmlinuz-linux-cachyos-lts\n' >"$p/syslinux/archiso_sys-lts.cfg"
+trim
+lts_kept "syslinux/archiso_sys-lts.cfg"
+grep -qx 'linux-cachyos-lts' "$p/$list" || fail "the LTS kernel left out while syslinux/archiso_sys-lts.cfg boots it"
+
 echo "ok agros-trim"

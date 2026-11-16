@@ -114,6 +114,12 @@ for f in "${boot[@]}"; do [[ -f $p/$f ]] || keep_lts "$f is gone"; done
 for f in grub/grub.cfg grub/loopback.cfg; do
     grep -q "^menuentry .*--id 'cachyos-lts' {\$" "$p/$f" || keep_lts "no LTS entry in $f"
 done
+# (and no other menu file boots it, mkarchiso copying every grub/*.cfg and syslinux/*.cfg: one CachyOS adds, or its
+# entries moved there, would boot a kernel gone from the ISO)
+for f in "$p"/grub/*.cfg "$p"/syslinux/*.cfg; do
+    [[ -f $f && " ${boot[*]} " != *" ${f#"$p"/} "* ]] || continue
+    ! grep -q 'linux-cachyos-lts' "$f" || keep_lts "${f#"$p"/} boots it too"
+done
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 # (each file made in $tmp first, all checked, then put in place: never half done)
