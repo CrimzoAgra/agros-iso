@@ -1,8 +1,9 @@
 name: ISO
 
-# Publishes a new AgrOS ISO on SourceForge (the download in the READMEs) after each change: a push of main here, or
-# AgrOS's packages changed (agros's CI starts this once it has published them). Built on GitHub, signed with AgrOS's
-# key. Secrets: AGROS_GPG_KEY (the signing key), SF_SSH_KEY (an SSH key only for SourceForge), SF_API_KEY. Three jobs:
+# Publishes a new AgrOS ISO on Cloudflare R2 (the download in the READMEs) and SourceForge (every one) after each
+# change: a push of main here, or AgrOS's packages changed (agros's CI starts this once it has published them). Built on
+# GitHub, signed with AgrOS's key. Secrets: AGROS_GPG_KEY (the signing key), SF_SSH_KEY (an SSH key only for
+# SourceForge), SF_API_KEY, the R2_* ones (its Upload to R2 step). Three jobs:
 # sourceforge checks SourceForge's key first; iso, the build, privileged, runs thousands of packages' install scripts as
 # root (Arch's, CachyOS's, AUR builds'), so it has no secret; publish signs and uploads with the secrets, in a container
 # of its own that runs only official Arch packages' scripts (its tools and their upgrade: the same trust gnupg itself,
@@ -271,7 +272,7 @@ jobs:
           mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/36-systemd-modules-load.hook
           sed -i 's/^#*DownloadUser.*/#DownloadUser = alpm/' /etc/pacman.conf
           pacman-key --init
-          pacman -Syu --noconfirm --needed gnupg openssh rsync jq
+          pacman -Syu --noconfirm --needed gnupg openssh rsync jq rclone
       - name: The ISO signed
         env:
           AGROS_GPG_KEY: ${{ secrets.AGROS_GPG_KEY }}
@@ -341,6 +342,30 @@ jobs:
             [ "$i" = 3 ] || sleep 60
           done
           exit 1
+      # The README's download: the ISO on Cloudflare R2 (fast; SourceForge keeps every one). One fixed name, replaced
+      # (a stable link, one ISO's room), each file saved under its real name (Content-Disposition), so its .sha256 checks
+      # out as SourceForge's. Secrets: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY (a token for this bucket
+      # only, read and write), R2_BUCKET
+      - name: Upload to R2
+        if: steps.newest.outputs.ok == 'true'
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          [ -n "$RCLONE_CONFIG_R2_ACCESS_KEY_ID" ] && [ -n "$R2_BUCKET" ] || { echo "::error::Add the R2_* secrets"; exit 1; }
+          src_dir=$PWD
+          . ./util-msg.sh && . ./util.sh
+          iso=$(newest_iso) && name=${iso##*/}
+          # (the ISO first, its checksum and signature after: a download in between gets the old ones for a few seconds)
+          for ext in "" .sha256 .sig; do
+            rclone copyto --retries 3 --s3-no-check-bucket \
+              --header-upload "Content-Disposition: attachment; filename=\"$name$ext\"" \
+              "$iso$ext" "r2:$R2_BUCKET/agros-latest.iso$ext"
+          done
       - name: Mark it published
         if: steps.newest.outputs.ok == 'true'
         run: mkdir -p /tmp/published && echo "$GITHUB_SHA" >/tmp/published/commit
