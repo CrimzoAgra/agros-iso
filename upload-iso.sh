@@ -42,7 +42,7 @@ for arg in "$@"; do
         -n|--dry-run) dry_run=true ;;
         --check) check=true ;;
         --signed) signed=true ;;
-        -h|--help) sed -n '3,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,/^$/s/^# \{0,1\}//p' "$0"; exit 0 ;;  # (the header above, to its blank line)
         -*) die "unknown option %s" "$arg" ;;
         *) [[ -z $iso ]] || die "only one ISO at a time"; iso=$arg ;;
     esac
