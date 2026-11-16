@@ -40,6 +40,28 @@ done
 echo "  -> Left out of the live ISO: ${gone[*]:-nothing}"
 ((${#missing[@]} == 0)) || echo "  -> Not in CachyOS's list any more (renamed or dropped?): ${missing[*]} (agros-trim.sh)"
 
+# Files inside packages the live session never uses, never unpacked (NoExtract, in the build's pacman.conf: the live
+# system's own, airootfs/etc/pacman.conf, and so installed systems, get whole packages): the font styles nothing names
+# (foot.ini's "JetBrains Mono Nerd Font" and group.lua's "JetBrains Mono NF" are the JetBrainsMonoNerdFont-* files,
+# the shell's "CaskaydiaCove NF" the CaskaydiaCoveNerdFont-* ones, every icon "Material Symbols Rounded") and
+# Hyprland's own wallpapers (Caelestia's dots set disable_hyprland_logo; Caelestia draws its own). A pattern that
+# matches nothing any more (a package renamed its files) just leaves them in: a bigger ISO, nothing broken
+no_extract=(
+    'usr/share/fonts/TTF/JetBrainsMonoNerdFontMono-*' 'usr/share/fonts/TTF/JetBrainsMonoNerdFontPropo-*'
+    'usr/share/fonts/TTF/JetBrainsMonoNL*'
+    'usr/share/fonts/TTF/CaskaydiaCoveNerdFontMono-*' 'usr/share/fonts/TTF/CaskaydiaCoveNerdFontPropo-*'
+    'usr/share/fonts/TTF/MaterialSymbolsOutlined*' 'usr/share/fonts/TTF/MaterialSymbolsSharp*'
+    'usr/share/hypr/wall*.png'
+)
+conf=$p/pacman.conf
+if [[ $(grep -c '^\[options\]$' "$conf" 2>/dev/null) == 1 ]]; then
+    # (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
+    sed -i "/^\[options\]\$/a NoExtract = ${no_extract[*]}" "$conf"
+    echo "  -> Not unpacked in the live ISO: unused font styles, Hyprland's wallpapers"
+else
+    echo "  -> Every file unpacked: no single [options] in $conf (agros-trim.sh)"
+fi
+
 boot=(grub/grub.cfg grub/loopback.cfg syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg)
 keep_lts() { echo "  -> The LTS kernel kept in the live ISO: $1 (agros-trim.sh)"; exit 0; }
 for f in "${boot[@]}"; do [[ -f $p/$f ]] || keep_lts "$f is gone"; done
