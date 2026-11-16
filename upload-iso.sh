@@ -24,8 +24,9 @@ source "$src_dir/util-msg.sh"
 source "$src_dir/util.sh"
 
 # Run with sudo (buildiso.sh -u): upload as the user who ran it, with their SSH key and config
+# (the SF_* settings in the environment kept: they win over that config, and sudo -u drops them)
 if run_by_sudo; then
-    as_invoking_user "$0" "$@"
+    as_invoking_user --preserve-env=SF_USER,SF_PROJECT,SF_FOLDER,SF_API_KEY "$0" "$@"
     exit
 fi
 
