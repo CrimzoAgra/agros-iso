@@ -45,6 +45,9 @@ script:
         echo "AgrOS: the install's snapshots not listed, left as they were"
       fi
       rm -f /tmp/agros-snapshots
+      # The downloaded packages, once: the install leaves about 4 GB of them in the cache, kept until three newer
+      # versions of each come (paccache.timer). Updates download their own
+      paccache -rk0 >/dev/null || echo "AgrOS: the package cache left as it was"
       # AgrOS's boot menu (hidden, 1 s, quiet, AgrOS's GRUB theme) and fast splash, now that GRUB is set up: agros-boot's own install ran
       # before /boot/grub existed (boot-menu left it for now), and the installer's grubcfg and plymouthcfg steps set CachyOS's after it.
       # boot-menu keeps CachyOS's settings as grub.agros-orig and notes its run (agros-boot's upgrades don't run it again unchanged);
