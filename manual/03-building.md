@@ -15,7 +15,7 @@ runs. Add `-a` to give it all of the CPU: faster, but hotter and louder.
 sudo ./buildiso.sh -p desktop -w -f
 ```
 
-`-f` compresses at a lower zstd level (6, instead of 15). It's quicker and makes a bigger ISO. Use it to try out a
+`-f` compresses at a lower zstd level (6, instead of 19). It's quicker and makes a bigger ISO. Use it to try out a
 change, and build without it for a release.
 
 Every build first checks that the Hyprland it would include has passed AgrOS's checks (the upstream gate: AgrOS's CI

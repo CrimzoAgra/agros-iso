@@ -88,7 +88,7 @@ The AgrOS ones in `archiso/airootfs/`:
    welcome (`etc/motd`, AgrOS's); the `display-manager.service` link to greetd; `packages.x86_64`; `etc/environment`
    (`ZPOOL_VDEV_NAME_PATH=1`); `etc/edition-tag` (`desktop`); and the installer's Hyprland copy (`gate_fetch`, step 1). Any profile but `desktop` stops the build at once
    (`buildiso.sh`, right after its options), before anything is deleted or downloaded. With
-   `-f`, it lowers the copy's squashfs zstd level (`profiledef.sh`) from 15 to 6, and stops if that line didn't change.
+   `-f`, it lowers the copy's squashfs zstd level (`profiledef.sh`) from 19 to 6, and stops if that line didn't change.
 4. **mkarchiso changes.** `modify_mkarchiso` copies the system's `/usr/bin/mkarchiso` to the work folder (`mkarchiso`)
    and edits the copy, which the build runs; Arch's own isn't touched (older checkouts edited it in place: see
    [Troubleshooting](../manual/06-troubleshooting.md)). The edits: the ISO doesn't ship Arch's
