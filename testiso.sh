@@ -14,6 +14,8 @@ source "$src_dir/util-msg.sh"
 source "$src_dir/util.sh"
 vmx=$(realpath -m "${AGROS_VM:-$HOME/vmware/AgrOS-test/AgrOS-test.vmx}")  # (vmrun list gives full paths)
 dir=${vmx%/*}
+# The VM's disk, new and empty
+new_disk() { vmware-vdiskmanager -c -s 64GB -a lsilogic -t 0 "$dir/disk.vmdk" >/dev/null; }
 fresh=
 case ${1:-} in
     --fresh) fresh=1 ;;
@@ -32,7 +34,7 @@ fi
 if [[ ! -f $vmx ]]; then
     msg "Making the VM %s" "$vmx"
     mkdir -p "$dir"
-    vmware-vdiskmanager -c -s 64GB -a lsilogic -t 0 "$dir/disk.vmdk" >/dev/null
+    new_disk
     cat >"$vmx" <<VMX
 .encoding = "UTF-8"
 config.version = "8"
@@ -71,7 +73,7 @@ VMX
 elif [[ -n $fresh ]]; then
     msg "A new empty disk, and the firmware's boot entries cleared"
     rm -f "$dir/disk.vmdk" "$dir/nvram"
-    vmware-vdiskmanager -c -s 64GB -a lsilogic -t 0 "$dir/disk.vmdk" >/dev/null
+    new_disk
 fi
 
 # The ISO in the DVD drive, connected at power-on
