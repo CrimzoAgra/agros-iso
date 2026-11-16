@@ -4,7 +4,7 @@
 # has no X authority for root. Qt Quick drawn in software: drawn by the GPU, root's Calamares lost its Wayland
 # connection a second after opening (Hyprland: "unknown object, message attach"; seen in VMware). The desktop's Qt
 # theme (qtengine, the user's colours): Calamares draws some parts (the partition names) from the palette, not the
-# stylesheet
+# stylesheet. Called as: pkexec-wrapper calamares ... (calamares-online.sh)
 case $WAYLAND_DISPLAY in
     "" | /*) wl=$WAYLAND_DISPLAY ;;
     *) wl=$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ;;
