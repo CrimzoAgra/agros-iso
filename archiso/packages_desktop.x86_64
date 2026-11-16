@@ -181,8 +181,8 @@ agros-keyring
 # AgrOS: the live session is AgrOS's desktop (Hyprland, Caelestia and AgrOS's settings), started by greetd; the rest of
 # agros-desktop (games, office, the big apps) only on the installed system
 hyprland
-# (the windows' title bars, the installer's too: hyprbars-build loads this one at login on the live USB)
-hyprland-plugin-hyprbars
+# (the windows' title bars, the installer's too, with AgrOS's patch: hyprbars-build loads it at login on the live USB)
+agros-hyprbars
 uwsm
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
