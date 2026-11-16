@@ -179,7 +179,8 @@ prepare_profile(){
 
     # (the one profile: buildiso.sh stops on any other before touching anything)
     cp "${work_dir}/archiso/packages_desktop.x86_64" "${work_dir}/archiso/packages.x86_64"
-    # AgrOS: what the live ISO leaves out (occt, the LTS kernel), on this copy: CachyOS's own files untouched
+    # AgrOS: what the live ISO leaves out (unused packages and files, the LTS kernel), on this copy: CachyOS's own
+    # files untouched
     bash "${src_dir}/agros-trim.sh" "${work_dir}/archiso"
     # The upstream gate's copy of the ISO's Hyprland and its libraries, for the installer (agros-gate-install: the
     # installed system gets these, approved, rather than whatever is newest on the day)
