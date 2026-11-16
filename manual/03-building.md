@@ -115,7 +115,9 @@ each change** (below); `upload-iso.sh` also works on its own.
 6. Check it: `./upload-iso.sh --check` connects with your key and says `OK`, or what's wrong.
 7. For GitHub to publish by itself, add the secrets below in agros-iso's **Settings > Secrets and variables >
    Actions**: `AGROS_GPG_KEY`, `SF_API_KEY` and `SF_SSH_KEY`, a private SSH key used only for this, whose public key is
-   in SourceForge's SSH Settings as in step 2. Neither key may have a passphrase (nothing on GitHub can type it;
+   in SourceForge's SSH Settings as in step 2; and, for the README's download on Cloudflare R2, `R2_ACCOUNT_ID`,
+   `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` (an API token for that bucket only, read and write) and `R2_BUCKET`.
+   Neither key may have a passphrase (nothing on GitHub can type it;
    publishing then fails at signing, or at SourceForge's check). GitHub gets a signing subkey of AgrOS's key, not the
    key itself: should the secret ever leak, that subkey is revoked and the key, which AgrOS installs trust, stays. In
    bash (not fish), with `<fpr>` AgrOS's key's fingerprint:
@@ -160,7 +162,8 @@ publishes now (*force*: even if nothing changed). GitHub emails you when one fai
 before the run fails (not one refused for its checksum or signature).
 It runs as three jobs. **sourceforge** checks SourceForge's key first, so a revoked one stops the run before the
 build. **iso**, the build, runs thousands of packages' install scripts as root (Arch's, CachyOS's, AUR builds'), so it
-gets none of the secrets. **publish** signs the ISO and uploads it, in a container of its own that runs only official
+gets none of the secrets. **publish** signs the ISO and uploads it (to SourceForge, and to Cloudflare R2 as
+`agros-latest.iso`, the README's download), in a container of its own that runs only official
 Arch packages' scripts (its tools'; the same trust gnupg, which signs, needs), and deletes each key once it's used.
 This keeps the signing key away from the build's scripts; it doesn't vouch for what they put in the ISO, which is
 signed as built, nor for the build's record of what's already published (one that escaped its container could mark a
