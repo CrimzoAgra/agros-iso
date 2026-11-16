@@ -47,15 +47,28 @@ check_requirements(){
 # and a copy of those packages kept on it (/opt/agros/gate) for the installer to install, not whatever is newest on
 # the day (agros-gate-install). gate_list: the approved list, fetched past GitHub Pages' cache (approved minutes ago,
 # as a push starts this, it was served the old one); an empty or garbled one (an error page) stops the build rather
-# than letting anything through
+# than letting anything through, and so does one without a good signature by AgrOS's key beside it (agros-approved.sig,
+# agros's CI signs it; verify_agros_sig: agros.asc alone), none or a bad one (a mirror or a network in between that
+# changed it)
 gate_list(){
-    local server list
+    local server list stamp d
     # (fetched once a build: check_gate's fetch read by the build's later steps, all on the same list; a blip at the end
     # can't stop a finished build)
     if [[ -n ${gate_cache:-} && -s $gate_cache ]]; then cat "$gate_cache"; return 0; fi
     server=$(pacman-conf --config "$src_dir/archiso/pacman.conf" --repo agros Server | head -1)
-    list=$(curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors "$server/agros-approved?t=$(date +%s)") ||
+    stamp=$(date +%s)
+    d=$(mktemp -d) || die "No temporary folder for the approved list"
+    if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved" "$server/agros-approved?t=$stamp"; then
+        rm -rf "$d"
         die "AgrOS's approved upstream versions couldn't be fetched (%s/agros-approved)" "$server"
+    fi
+    if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved.sig" "$server/agros-approved.sig?t=$stamp" ||
+        ! verify_agros_sig "$d/agros-approved"; then
+        rm -rf "$d"
+        die "AgrOS's approved upstream versions have no good signature by AgrOS's key (%s/agros-approved.sig)" "$server"
+    fi
+    list=$(cat "$d/agros-approved")
+    rm -rf "$d"
     [[ -n $list ]] && ! grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" ||
         die "AgrOS's approved upstream versions aren't a list of them (%s/agros-approved)" "$server"
     # (kept first: a list that can't be kept stops here, said, not silently after it was printed)
