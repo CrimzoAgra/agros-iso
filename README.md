@@ -25,7 +25,7 @@ with its `.sha256` and `.sig`, is also on [SourceForge](https://sourceforge.net/
 a download, see [Downloading and checking it](manual/03-building.md#downloading-and-checking-it).
 
 CachyOS's changes to its ISO are merged in by themselves each day, and only when they're safe; how that and every other
-update is kept from breaking anything: [How updates stay safe](https://github.com/CrimzoAgra/agros#how-updates-stay-safe).
+update is kept from breaking anything: [How updates stay safe](https://github.com/CrimzoAgra/agros/blob/main/manual/12-updates.md#how-updates-stay-safe).
 
 ## The AgrOS ISO Manual
 
