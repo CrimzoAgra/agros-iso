@@ -232,10 +232,10 @@ as the partition names, from the palette and not the stylesheet.
 
 `agros-calamares-config` edits CachyOS's settings in `/etc/calamares` after `calamares-online.sh` has put them there:
 
-- `netinstall.conf`: the package list from
-  `https://raw.githubusercontent.com/CrimzoAgra/agros-iso/main/archiso/airootfs/usr/share/agros/netinstall.yaml`
-  first, and the ISO's own copy (`file:///usr/share/agros/netinstall.yaml`) if that can't be fetched. So a change to
-  `netinstall.yaml` pushed to `main` reaches ISOs that are already built.
+- `netinstall.conf`: the package list, the ISO's own copy alone (`file:///usr/share/agros/netinstall.yaml`), never
+  one fetched from GitHub: a bad push to `main` would have broken every install started after it, on ISOs already
+  out, and Calamares can run commands from a group file as root. A change to `netinstall.yaml` builds a new ISO
+  anyway (`iso.yml`, after the push), which is how it reaches new installs.
 - `shellprocess_agrosgate.conf` (just before the next one, on the live system: `dontChroot`): `agros-gate-install`.
   The install downloaded the newest Hyprland and libraries; one not on AgrOS's approved list (a new Hyprland not
   checked yet), or no list reachable, and the ISO's own copy (`/opt/agros/gate`) is installed over them, all together
