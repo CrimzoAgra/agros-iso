@@ -86,7 +86,7 @@ trap 'trap_exit INT "$(gettext "Aborted by user! Exiting...")"' INT
 trap exit_trap EXIT
 
 # Build ISO in RAM: quicker, and spares the disk. In /tmp (a tmpfs, at half the RAM by default) if it has room for the
-# work folder: the live system unpacked (about 7.6 GB) and the ISO's files with the squashfs (about 3.3 GB). The ISO
+# work folder: the live system unpacked (about 4.2 GB) and the ISO's files with the squashfs (about 1.9 GB). The ISO
 # itself goes to out/. (A RAM size said nothing of /tmp's room: 24 GB of RAM is a 12 GB /tmp)
 if [[ "$build_in_ram" == "true" ]]; then
     avail=$(df --output=avail -BG "${TMPDIR:-/tmp}" 2>/dev/null | tail -1 | tr -dc 0-9) || true
