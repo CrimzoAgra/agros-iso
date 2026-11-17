@@ -111,16 +111,25 @@ grep -q '^NoExtract = .* # agros-iso$' "$p/airootfs/etc/pacman-more.conf" || fai
 live=$p/pacman.conf inst=$p/airootfs/etc/pacman-more.conf
 for x in usr/share/locale/de/LC_MESSAGES/coreutils.mo usr/share/man/man1/ls.1.gz usr/share/info/bash.info.gz \
     usr/share/doc/foot/README.md usr/share/fonts/TTF/JetBrainsMonoNerdFontMono-Bold.ttf usr/share/hypr/wall0.png \
-    usr/lib/libnvoptix.so.1; do
+    usr/lib/libnvoptix.so.1 usr/include/stdio.h usr/include/hyprland/src/version.h usr/lib/libQt6Qml.a \
+    usr/lib/gcc/x86_64-pc-linux-gnu/16/libgcc.a usr/share/icons/Bibata-Modern-Amber/cursors/left_ptr \
+    usr/share/icons/Bibata-Modern-Ice-Right/cursors/left_ptr usr/share/icons/Bibata-Original-Ice/index.theme \
+    usr/lib/libnvidia-tileiras.so.1 usr/lib/libnvidia-nvvm.so.4 usr/lib/libnvidia-nvvm70.so.4 \
+    usr/lib/libcudadebugger.so.1 usr/lib/libnvidia-vksc-core.so.1 usr/share/vulkansc/icd.d/nvidia_icd_vksc.json; do
     ! extracted "$live" "$x" || fail "the live ISO unpacks $x"
 done
 for x in usr/share/locale/locale.alias usr/share/locale/de/LC_MESSAGES/calamares-python.mo \
     usr/share/locale/de/LC_MESSAGES/kpmcore.mo usr/share/locale/de/LC_MESSAGES/xkeyboard-config.mo \
-    usr/share/doc/fish/index.html usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf usr/bin/Hyprland; do
+    usr/share/doc/fish/index.html usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf usr/bin/Hyprland \
+    usr/share/icons/Bibata-Modern-Ice/cursors/left_ptr usr/share/icons/Bibata-Modern-Ice/index.theme \
+    usr/lib/libcuda.so.1 usr/lib/libnvidia-gpucomp.so.620.70.06 usr/lib/libnvidia-ptxjitcompiler.so.1 \
+    usr/lib/libnvidia-rtcore.so.620.70.06 usr/lib/libarchive.so.13 usr/lib/libnvidia-allocator.so.1 \
+    usr/share/vulkan/icd.d/nvidia_icd.json; do
     extracted "$live" "$x" || fail "the live ISO leaves out $x"
 done
 for x in usr/share/locale/de/LC_MESSAGES/coreutils.mo usr/share/man/man1/ls.1.gz usr/share/doc/fish/index.html \
-    usr/share/doc/hplip-3.25/index.html usr/lib/libnvoptix.so.1; do
+    usr/share/doc/hplip-3.25/index.html usr/lib/libnvoptix.so.1 usr/include/stdio.h usr/lib/libQt6Qml.a \
+    usr/share/icons/Bibata-Modern-Amber/cursors/left_ptr usr/lib/libnvidia-tileiras.so.1; do
     extracted "$inst" "$x" || fail "installed systems leave out $x"
 done
 for x in usr/share/doc/foot/README.md usr/share/fonts/TTF/MaterialSymbolsSharp.ttf usr/share/hypr/wall2.png; do

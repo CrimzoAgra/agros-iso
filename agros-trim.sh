@@ -38,6 +38,7 @@ leave_out=(
     edk2-shell                              # the UEFI Shell boot entry
     nvme-cli sg3_utils sdparm               # disk admin tools (the installer's partitioning: kpmcore, smartmontools)
     darkhttpd imwheel                       # Arch's test web server; an X11 mouse-wheel tool (the session is Wayland)
+    gcc                                     # the installer's CPU check needed it until 2026-04 (now ld.so's own)
 )
 # The list read as mkarchiso reads it: a comment after a name, blanks around it. named <ERE>: a package in it matches;
 # drop <ERE>: the lines naming one that does, gone
@@ -90,6 +91,14 @@ no_extract=(
     # (firmware for Marvell's network switch chips, not a PC's; nouveau's older GSP firmware, 535: it loads 570.144
     # first, kept)
     'usr/lib/firmware/mrvl/prestera/*' 'usr/lib/firmware/nvidia/*-535.113.01.bin*'
+    # (C and C++ headers and static libraries: no compiler on the live system, gcc left out above)
+    'usr/include/*' 'usr/lib/*.a'
+    # (the pointer's 11 other Bibata styles: the desktop's is Bibata-Modern-Ice, agros's hypr-vars.lua)
+    'usr/share/icons/Bibata-*' '!usr/share/icons/Bibata-Modern-Ice/*'
+    # (CUDA's own compilers and debugger, and Vulkan SC (for safety-critical systems): only libcuda loads them, to build
+    # or debug compute kernels, none on the live system; the display libraries and libcuda itself kept)
+    'usr/lib/libnvidia-nvvm*' 'usr/lib/libnvidia-tileiras*' 'usr/lib/libcudadebugger*' 'usr/lib/libnvidia-vksc-core*'
+    'usr/share/vulkansc/icd.d/nvidia_icd_vksc.json'
 )
 # Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
 # (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf
@@ -111,7 +120,7 @@ add_noextract() {
     fi
 }
 add_noextract "$p/pacman.conf" "${no_extract[*]}" \
-    "in the live ISO: unused fonts and firmware, Hyprland's wallpapers, translations, man pages, docs"
+    "in the live ISO: unused fonts, cursors, firmware and NVIDIA libraries, Hyprland's wallpapers, translations, man pages, docs, headers"
 add_noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
     "on installed systems: unused font styles, Hyprland's wallpapers, docs"
 
