@@ -193,7 +193,7 @@ grep -q '^ \+minimumSize:' "$mods/partition.conf" || echo "AgrOS: the EFI partit
 # the btrfs snapshot, whichever module takes it (a shellprocess script, or gucc on their newer branches), or before the
 # clean-up, as CachyOS's older branch has it
 # step_at <step>: its line in settings.conf's sequence (none: empty)
-step_at() { grep -n "^ *- $1\$" "$settings" | head -1 | cut -d: -f1 || true; }
+step_at() { grep -n -m1 "^ *- $1\$" "$settings" | cut -d: -f1 || true; }
 snapshot='[^ @]*@btrfs_snapshot'
 if ! grep -q '^ *- shellprocess@greetd$' "$settings"; then
     grep -q '^- id: *greetd$' "$settings" ||
