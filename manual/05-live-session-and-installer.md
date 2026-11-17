@@ -47,9 +47,15 @@ It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 - There's no page to pick a desktop: AgrOS is the desktop.
 - It suggests a computer name starting with `agros-`, names the firmware's boot entry `AgrOS`, and sets up AgrOS's
   login screen on the new system.
+- It installs GRUB, with no page to pick another boot loader: AgrOS's boot menu, its look and the snapshots in it
+  are GRUB's.
+- It needs 20 GB for AgrOS. Beside Windows (**Install alongside**, or **Replace a partition** on free space), it uses
+  the EFI partition Windows already has, even Windows' own 100 MB one. Getting Windows ready first (Fast Startup,
+  BitLocker) is in AgrOS's manual:
+  [Keeping Windows](https://github.com/CrimzoAgra/agros/blob/main/manual/02-installing.md#keeping-windows).
 - If Hyprland was updated after the ISO was made and AgrOS hasn't checked the new version yet, the new system gets
-  the ISO's own Hyprland instead, when it still fits with the rest; it updates once AgrOS has checked the new one. `/var/log/agros-gate-install.log` on
-  the new system says which.
+  the ISO's own Hyprland instead, when it still fits with the rest; it updates once AgrOS has checked the new one.
+  `/var/log/agros-gate-install.log` on the new system says which.
 
 It needs an internet connection, because it downloads the packages. If you aren't connected when it starts (on Wi-Fi,
 at the first login), it says "Connect to the internet to install": connect, and it goes on by itself within a few

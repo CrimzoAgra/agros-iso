@@ -58,6 +58,11 @@ cd archiso && sudo rm -rf packages.x86_64 airootfs/etc/{motd,environment,version
 
 **The installer didn't open.** Open **Install AgrOS** from the Super menu.
 
+**There's no Install alongside, or it's greyed out.** Windows' partition is encrypted (BitLocker, or Device encryption
+on many Windows 11 laptops), or there isn't 20 GB to spare on the drive. Shrink Windows' partition in Windows itself
+and pick **Replace a partition** on the free space: see AgrOS's manual,
+[Keeping Windows](https://github.com/CrimzoAgra/agros/blob/main/manual/02-installing.md#keeping-windows).
+
 **The installer fails or won't start.** Each time it starts, it waits for the internet (up to 5 minutes, saying
 "Connect to the internet to install"), syncs the clock (waiting up to 30 seconds) and makes a
 new package keyring with the latest Arch and CachyOS keys from the internet; if that fails it says "The installer

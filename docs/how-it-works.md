@@ -149,7 +149,9 @@ The AgrOS ones in `archiso/airootfs/`:
   - No other desktops or window managers (KDE, GNOME, Cosmic, Niri, Cinnamon, Budgie, MATE, Xfce, LXQt, LXDE,
     CachyOS's Hyprland, MangoWM, Sway, Wayfire, i3, Qtile, bspwm, Openbox): `agros-desktop` is the desktop.
   - No **CachyOS Handhelds** group: its `cachyos-handheld` brings Plasma's login manager and Steam's gamescope session,
-    a second login screen and desktop next to AgrOS's (the hidden handheld kernels group stays).
+    a second login screen and desktop next to AgrOS's. No hidden handheld kernels group either, and no `platform:`
+    keys: CachyOS's newer installer installs every group whatever its platform, so the handheld kernel went on every
+    PC.
   - No **Support for HP Printer/Scanner** group (unticked by CachyOS): `agros-desktop` has CUPS and HPLIP already.
   - No **Plymouth** group (the boot splash): `agros-desktop`'s `agros-boot` needs the same three packages.
   - No **Firefox and language package** (`agros-desktop` has LibreWolf), Alacritty (AgrOS's terminal is foot),
@@ -252,11 +254,10 @@ as the partition names, from the palette and not the stylesheet.
   keeping why it was installed), and a rebuild of the same version (CachyOS's for newer CPUs, `-1.1`) counts as the
   same. What it did is in the new system's `/var/log/agros-gate-install.log`. AgrOS's per-user package hooks
   (hyprbars built for each account) don't run in it (`AGROS_NO_USER_HOOKS`): the first login does that. The new
-  system's root is Calamares's `${ROOT}`; the approved list's addresses come from the live system's own `pacman.conf`
-  (the new system's includes the gate's file, which the live system lacks), each of `[agros]`'s servers in turn (GitHub
-  Pages, then its R2 mirror), fetched with a few tries, and taken only
-  with a good signature by AgrOS's key beside it (`agros-approved.sig`, checked with `gpgv` against `agros-keyring`'s
-  key file alone): with none, or a bad one, it's as unreachable, said. The copy goes in
+  system's root is Calamares's `${ROOT}`; the approved list comes from the live system's own `pacman.conf`'s
+  `[agros]` servers (the new system's includes the gate's file, which the live system lacks), fetched with a few
+  tries and checked as the build's is (step 1; here against `agros-keyring`'s key file): with no good signature, it's
+  as unreachable, said. The copy goes in
   only when it's approved itself: on the list, or, with the list unreachable, from a build that checked it (a test
   build's copy, marked `ungated`, never). A gated package installed that the copy hasn't (an ISO built before it was
   gated), not approved, is said, and held by the new system's updates. pacman there is never cut off (interrupted, it
@@ -336,7 +337,7 @@ GitHub Pages, signed with AgrOS's key. Its second server, `https://pub-f1a3a4829
 listed after it in all three `pacman.conf` files, so pacman goes there only when Pages can't be reached:
 
 - **AgrOS's packages.** The live system gets `agros-keyring`, `agros-scripts`, `agros-hyprland-settings`,
-  `agros-welcome` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo (`quickshell-git`,
+  `agros-welcome`, `agros-hyprbars` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo (`quickshell-git`,
   `caelestia-shell`, ...) and the installer, `agros/calamares` (below). The installed system gets
   `agros-desktop` and everything it pulls in.
 - **The installer.** The CI rebuilds CachyOS's `cachyos-calamares` PKGBUILD against today's libraries. CachyOS's own
