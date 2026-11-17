@@ -4,7 +4,8 @@
 # has no X authority for root. Qt Quick drawn in software: drawn by the GPU, root's Calamares lost its Wayland
 # connection a second after opening (Hyprland: "unknown object, message attach"; seen in VMware). The desktop's Qt
 # theme (qtengine, the user's colours): Calamares draws some parts (the partition names) from the palette, not the
-# stylesheet. Called as: pkexec-wrapper calamares ... (calamares-online.sh)
+# stylesheet; qtengine when unset, as at login (the session's autostart, a systemd unit: Caelestia sets it in
+# Hyprland's own environment only). Called as: pkexec-wrapper calamares ... (calamares-online.sh)
 case $WAYLAND_DISPLAY in
     "" | /*) wl=$WAYLAND_DISPLAY ;;
     *) wl=$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ;;
@@ -17,6 +18,6 @@ exec pkexec env \
     XDG_CURRENT_DESKTOP="$XDG_CURRENT_DESKTOP" \
     XDG_SESSION_TYPE="$XDG_SESSION_TYPE" \
     XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}" \
-    QT_QPA_PLATFORMTHEME="$QT_QPA_PLATFORMTHEME" \
+    QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qtengine}" \
     QT_QUICK_BACKEND=software \
     dbus-launch "$@"
