@@ -59,7 +59,7 @@ script:
         cp -f /etc/greetd/caelestia-greeter/greetd-config.toml /etc/greetd/config.toml
         chmod 644 /etc/greetd/config.toml
       fi
-      # (last: its result is the step's) CachyOS's dmcheck only enables greetd for noctalia-greeter
+      # (last: its result is the step's) greetd as the login screen: CachyOS's installer enables it only for noctalia-greeter
       ln -sf /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service
 i18n:
   name: "Configuring the AgrOS login screen..."
@@ -84,12 +84,34 @@ if [ -f "$snap" ] && ! grep -q 'agros: menu' "$snap"; then
 fi
 # The boot entry the firmware lists (and GRUB's folder on the boot partition, EFI/AgrOS)
 sed -i 's/^efiBootloaderId: .*/efiBootloaderId: "AgrOS"/' "$mods/bootloader.conf" 2>/dev/null || true
-# CachyOS's remove-nvidia isn't on the ISO (only its offline install's shellprocess-before runs it): not copied to the
-# new system, where each install logged "Failed to copy file /usr/local/bin/remove-nvidia"
-if [ -f "$mods/pacstrap.conf" ]; then
-    sed -i '\|^ *- *"\?/usr/local/bin/remove-nvidia"\?$|d' "$mods/pacstrap.conf"
-    grep -q 'remove-nvidia' "$mods/pacstrap.conf" && fail "remove-nvidia is still in $mods/pacstrap.conf's postInstallFiles"
-fi
+# Two scripts of CachyOS's ISO that AgrOS's ISO doesn't have: remove-nvidia (only CachyOS's offline install runs it) and
+# dmcheck (it picks the login screen: the greetd step above does that). Neither copied to the new system (each install
+# logged "Failed to copy file") nor run there: the cachyos branch's installer runs /usr/local/bin/dmcheck in the new
+# system, and missing, it failed the install at its end, after the disk was wiped
+# drop_item <file> <path>: the list items naming <path>, with their own keys under them (a command's verbose:, timeout:)
+drop_item() {
+    [ -f "$1" ] || return 0
+    awk -v p="$2" '
+        skip && match($0, /^ */) && RLENGTH > ind { next }
+        { skip = 0; s = $0; sub(/["\047]$/, "", s) }
+        s ~ /^ *- / && length(s) >= length(p) && substr(s, length(s) - length(p) + 1) == p { match(s, /^ */); ind = RLENGTH; skip = 1; next }
+        { print }' "$1" >"$1.agros" && cat "$1.agros" >"$1" && rm -f "$1.agros"
+}
+for f in pacstrap.conf shellprocess.conf; do
+    drop_item "$mods/$f" /usr/local/bin/remove-nvidia
+    drop_item "$mods/$f" /usr/local/bin/dmcheck
+    ! grep -q '/usr/local/bin/\(remove-nvidia\|dmcheck\)' "$mods/$f" 2>/dev/null || fail "remove-nvidia or dmcheck is still in $mods/$f"
+done
+# And none other the install runs from /usr/local/bin and this ISO lacks (CachyOS's ISO has more there): said now, not
+# after the disk was wiped. The steps of settings.conf, and shellprocess.conf (the plain shellprocess step); a command
+# allowed to fail (its "-") and the files pacstrap copies (a warning when missing) left out
+for f in shellprocess.conf $(sed -n 's/^ *config: *//p' "$settings"); do
+    [ -f "$mods/$f" ] || continue
+    while read -r x; do
+        [ -e "$x" ] || fail "the installer runs $x, which this ISO doesn't have ($mods/$f)"
+    done < <(grep -v '^ *#' "$mods/$f" | grep -v '^ *- *\(command: *\)\?["'\'']\?-' |
+        sed -n 's|.*\(/usr/local/bin/[^"'\'' ]*\).*|\1|p')
+done
 
 # No desktop page: AgrOS is the desktop
 sed -i '/^  - packagechooser@desktop$/d' "$settings"

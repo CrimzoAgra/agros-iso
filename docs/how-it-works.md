@@ -148,6 +148,7 @@ The AgrOS ones in `archiso/airootfs/`:
   - No **CachyOS Handhelds** group: its `cachyos-handheld` brings Plasma's login manager and Steam's gamescope session,
     a second login screen and desktop next to AgrOS's (the hidden handheld kernels group stays).
   - No **Support for HP Printer/Scanner** group (unticked by CachyOS): `agros-desktop` has CUPS and HPLIP already.
+  - No **Plymouth** group (the boot splash): `agros-desktop`'s `agros-boot` needs the same three packages.
   - No **Firefox and language package** (`agros-desktop` has LibreWolf), Alacritty (AgrOS's terminal is foot),
     `cachyos-hello` (AgrOS has `agros-welcome`), `cachyos-fish-config` and `cachyos-micro-settings`
     (`agros-hyprland-settings` has AgrOS's own fish and micro settings in `/etc/skel`, and replaces them).
@@ -178,8 +179,9 @@ The AgrOS ones in `archiso/airootfs/`:
   in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
   boot entry (`AgrOS`).
 - The boot menus say AgrOS (GRUB and the BIOS menu; the kernel's own files keep their names). CachyOS's unused
-  systemd-boot entries (`efiboot/`), its `remove-nvidia` (and so out of the files the installer copies to the new
-  system, below) and its `linux.preset` (for Arch's `linux`, not on the ISO:
+  systemd-boot entries (`efiboot/`), its `usr/local/bin` scripts for its offline install and its desktops
+  (`remove-nvidia`, `removeun`, `removeun-online`, `choose-mirror`, `prepare-live-desktop.sh` and `dmcheck`; the last
+  two the installer would copy to the new system and run there: out of its steps, below) and its `linux.preset` (for Arch's `linux`, not on the ISO:
   it only built the LTS kernel's initramfs a second time; each kernel's own preset uses the `archiso.conf` drop-in)
   are gone. The BIOS menu's background is the AgrOS banner and its title is in the logo's colour (`#bec4ee`).
 - No boot text on the menus' normal entries (GRUB's `grub.cfg` and `loopback.cfg`, syslinux's BIOS and PXE ones):
@@ -265,7 +267,7 @@ as the partition names, from the palette and not the stylesheet.
   that GRUB is set up (agros-boot's own install runs before `/boot/grub` exists, and the `grubcfg` and `plymouthcfg`
   steps set CachyOS's after it; on an AMD GPU `splash-theme` keeps the plain `cachyos` theme CachyOS's `plymouthcfg`
   picks there, as its animated one breaks on some AMD GPUs); and last, copies `caelestia-greeter`'s greetd
-  config into place and enables greetd (CachyOS's `dmcheck` only enables greetd for `noctalia-greeter`, so without
+  config into place and enables greetd (CachyOS's installer enables greetd only for its `noctalia-greeter`, so without
   this AgrOS would boot to a text login). It also names the first snapshot "Fresh AgrOS Installation", and has the
   btrfs step that takes it (after this one) remake GRUB's menu, so the snapshot is in it from the first boot.
   Its command has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
@@ -274,9 +276,13 @@ as the partition names, from the palette and not the stylesheet.
   an ISO with one (`check_calamares_commands` in `util.sh`).
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
-  firmware's boot entry and GRUB's folder `EFI/AgrOS`; and `/usr/local/bin/remove-nvidia` out of `pacstrap.conf`'s
-  `postInstallFiles` (not on the ISO: each install logged "Failed to copy file /usr/local/bin/remove-nvidia"; only the
-  offline install's `shellprocess-before` runs it), failing if it's still there.
+  firmware's boot entry and GRUB's folder `EFI/AgrOS`.
+- CachyOS's `remove-nvidia` and `dmcheck`, scripts of its ISO that AgrOS's doesn't have, out of what the install copies
+  to the new system (`pacstrap.conf`'s `postInstallFiles`: each install logged "Failed to copy file") and runs there
+  (`shellprocess.conf`: CachyOS's `cachyos` branch runs `/usr/local/bin/dmcheck`, which picks the login screen, as the
+  greetd step does; missing, it failed the install at its end, after the disk was wiped), with the keys of a command
+  under it; fails if either is still there. Any other command of the install's steps from `/usr/local/bin` that the
+  ISO doesn't have stops it the same way, before anything is changed on the disks (not one allowed to fail, its `-`).
 - Removes `packagechooser@desktop`, and fails if it's still there.
 - GRUB only, with no bootloader page (AgrOS's hidden boot menu, its theme and the snapshots in it are GRUB's): removes
   `packagechooser@bootloader`, whose choice (Limine by default) the rest of the installer reads. So the `bootloader`
