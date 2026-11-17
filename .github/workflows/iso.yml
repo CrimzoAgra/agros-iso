@@ -114,13 +114,15 @@ jobs:
         run: |
           # A push here while AgrOS's CI is publishing packages (its runs on main, started, queued or waiting their turn):
           # waits for them, so this ISO has them; after 90 minutes it builds with what's published. (Started by
-          # agros's CI, or by hand: built at once)
+          # agros's CI, or by hand: built at once.) Its CI workflow's runs alone (ci.yml): agros's other workflows
+          # (the R2 mirror after each CI run, the weekly status, the keepalive) publish no packages, and counted, a push
+          # waited for them too
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             for i in $(seq 90); do
               busy=0
-              for status in in_progress queued pending waiting; do
+              for status in in_progress queued requested pending waiting; do
                 runs=$(curl -fsS --retry 3 --retry-all-errors -H "Authorization: Bearer $GH_TOKEN" \
-                  "https://api.github.com/repos/CrimzoAgra/agros/actions/runs?branch=main&status=$status&per_page=1" | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$') || true
+                  "https://api.github.com/repos/CrimzoAgra/agros/actions/workflows/ci.yml/runs?branch=main&status=$status&per_page=1" | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$') || true
                 [[ $runs =~ ^[0-9]+$ ]] || { echo "::error::Can't read AgrOS's CI status from GitHub"; exit 1; }
                 busy=$((busy + runs))
               done
