@@ -122,28 +122,6 @@ change_grub_version() {
     done
 }
 
-generate_environment() {
-    local _profile="$1"
-    if [ "$_profile" == "desktop" ]; then
-        cat << 'EOF' > "${work_dir}/archiso/airootfs/etc/environment"
-ZPOOL_VDEV_NAME_PATH=1
-EOF
-    fi
-}
-
-generate_version_tag() {
-    local _profile="$1"
-    local _version="$2"
-    if [ "$_profile" == "desktop" ]; then
-        echo "${_version}" > "${work_dir}/archiso/airootfs/etc/version-tag"
-    fi
-}
-
-generate_edition_tag() {
-    local _edition="$1"
-    echo "${_edition}" > "${work_dir}/archiso/airootfs/etc/edition-tag"
-}
-
 # A copy of Arch's mkarchiso for this build, with AgrOS's two changes (Arch's own file not touched):
 # Arch's keyring timer off on the ISO (no Arch keyring refresh on a CachyOS system), and the ISO's package list read
 # from its package database with no repos set (through the live system's pacman.conf, --sysroot, it warned that the
@@ -188,13 +166,12 @@ prepare_profile(){
     # AgrOS: greetd logs the live user straight into AgrOS's Hyprland session (/etc/greetd/config.toml)
     ln -sf /usr/lib/systemd/system/greetd.service "${work_dir}/archiso/airootfs/etc/systemd/system/display-manager.service"
 
-    generate_environment "${profile}"
-
-    # Write out version to be able to check ISO version
-    generate_version_tag "${profile}" "${_iso_version}"
-
-    # Write out edition to be able to check ISO edition
-    generate_edition_tag "${profile}"
+    # (desktop, the one profile: buildiso.sh stops on any other) ZFS pools by their devices' paths; the ISO's version
+    # (calamares-online.sh writes it in the installer's log) and its edition
+    local etc=${work_dir}/archiso/airootfs/etc
+    echo "ZPOOL_VDEV_NAME_PATH=1" >"$etc/environment"
+    echo "${_iso_version}" >"$etc/version-tag"
+    echo "${profile}" >"$etc/edition-tag"
 
     iso_file=$(gen_iso_fn).iso
 }
@@ -275,21 +252,9 @@ run_build() {
     fi
 }
 
+# agros-<profile>-linux-<the build's time> (the time: a second ISO the same day got the first one's name, and replaced it
+# on SourceForge); -ungated after it when built past the upstream gate, AGROS_UNGATED (said in its own name, which goes
+# wherever it's copied, and upload-iso.sh never publishes it)
 gen_iso_fn(){
-    local vars=() name
-    vars+=("agros")
-    [[ -n ${profile} ]] && vars+=("${profile}")
-
-    vars+=("linux")
-    # (and the time: a second ISO the same day got the first one's name, and replaced it on SourceForge)
-    vars+=("${_iso_stamp}")
-    # (built past the upstream gate, AGROS_UNGATED: said in its own name, which goes wherever it's copied, and
-    # upload-iso.sh never publishes it)
-    [[ ${AGROS_UNGATED:-} != 1 ]] || vars+=("ungated")
-
-    for n in "${vars[@]}"; do
-        name=${name:-}${name:+-}${n}
-    done
-
-    echo "$name"
+    echo "agros-${profile}-linux-${_iso_stamp}$([[ ${AGROS_UNGATED:-} != 1 ]] || echo -ungated)"
 }
