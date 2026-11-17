@@ -117,28 +117,15 @@ a new ISO by itself after each change** (below); `upload-iso.sh` also works on i
    Actions**: `AGROS_GPG_KEY`, `SF_API_KEY` and `SF_SSH_KEY`, a private SSH key used only for this, whose public key is
    in SourceForge's SSH Settings as in step 2; and, for the README's download on Cloudflare R2, `R2_ACCOUNT_ID`,
    `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` (an API token for that bucket only, read and write) and `R2_BUCKET`.
-   Neither key may have a passphrase (nothing on GitHub can type it;
-   publishing then fails at signing, or at SourceForge's check). Today GitHub has AgrOS's key itself (its only
-   copy). A signing subkey instead, with the key kept offline, would let a leaked secret be revoked while the key
-   AgrOS installs trust stays; to move to one, in bash (not fish), with `<fpr>` AgrOS's key's fingerprint:
+   Neither key may have a passphrase (nothing on GitHub can type it; publishing then fails at signing, or at
+   SourceForge's check). `AGROS_GPG_KEY` is AgrOS's key itself, kept only in GitHub's secrets (the same secret in both
+   repos). Make the SSH key outside any repo, in bash: `~/.ssh/agros-sf-ci` is `SF_SSH_KEY`, its `.pub` goes in
+   SourceForge, and both are deleted from your PC after:
 
    ```bash
-   # Once, if the key has no signing subkey yet (gpg -K <fpr> shows no [S] under "ssb"); then agros.asc here and the
-   # agros-keyring package get the key again with it (gpg --armor --export <fpr>), so signatures by it check
-   # (it expires in 2 years. Renew it months before: gpg --quick-set-expire <fpr> 2y <subkey-fpr>, then agros.asc and
-   # agros-keyring get the key again, published, and the secret below is made again. Once expired, every AgrOS
-   # machine refuses [agros]'s packages signed by it, the agros-keyring that would bring the renewal too)
-   gpg --quick-add-key <fpr> ed25519 sign 2y
-   # A copy with only the subkeys, without a passphrase, in a keyring of its own (yours left as it is)
-   tmp=$(mktemp -d)
-   # (<subkey-fpr>!: that signing subkey alone, from gpg -K --with-subkey-fingerprints)
-   gpg --armor --export-secret-subkeys '<subkey-fpr>!' | gpg --homedir "$tmp" --import
-   gpg --homedir "$tmp" --passwd <fpr>          # its passphrase, then an empty one
-   gpg --homedir "$tmp" --armor --export-secret-subkeys '<subkey-fpr>!'   # this is AGROS_GPG_KEY, in both repos
-   gpgconf --homedir "$tmp" --kill gpg-agent; rm -rf "$tmp"
-   # The SSH key, outside any repo: ~/.ssh/agros-sf-ci is SF_SSH_KEY, its .pub goes in SourceForge; both deleted after
    ssh-keygen -t ed25519 -N '' -C agros-sf-ci -f ~/.ssh/agros-sf-ci
    ```
+
    The first time: push **agros** first and let its CI publish once. The ISO build checks Hyprland against the
    approved list agros's CI publishes beside the `[agros]` repo (`agros-approved`), and stops while there is none.
 8. For agros's CI to start the ISO build after it publishes packages, add `AGROS_ISO_TOKEN` in **agros**'s secrets: a
