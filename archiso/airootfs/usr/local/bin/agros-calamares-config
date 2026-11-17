@@ -116,6 +116,19 @@ done
 grep -q '^efiSystemPartition: *"/boot/efi"' "$mods/partition.conf" && grep -q '^efiSystemPartitionSize: *512M' "$mods/partition.conf" &&
     grep -q '^allowZfsEncryption: false' "$mods/partition.conf" ||
     fail "the partition page isn't on GRUB's boot partition ($mods/partition.conf)"
+# Beside Windows: the EFI partition already on the disk used down to 64 MB (efi.minimumSize; Windows makes its own
+# 100 MB), not refused below the 512 MB a new one is made. GRUB needs a few MB there, the kernels being on the system's
+# partition. (AgrOS's installer, rebuilt in agros's CI, checks this minimum on the install-type page, not the 512 MB;
+# Calamares's own floor is 32 MB.) A minimum CachyOS has set already is kept; an efi setting of theirs written another
+# way (on one line) too, as it is: the install goes on, only "Install alongside" a small one refused as before
+if ! grep -q '^efi:' "$mods/partition.conf"; then
+    printf '\nefi:\n  minimumSize: 64M\n' >>"$mods/partition.conf"
+elif grep -q '^efi: *$' "$mods/partition.conf" && ! grep -q '^ \+minimumSize:' "$mods/partition.conf"; then
+    # (indented as the block's own keys are: YAML takes no other)
+    ind=$(sed -n '/^efi: *$/{n;s/^\( *\).*/\1/p;q;}' "$mods/partition.conf")
+    sed -i "s/^efi: *\$/&\n${ind:-  }minimumSize: 64M/" "$mods/partition.conf"
+fi
+grep -q '^ \+minimumSize:' "$mods/partition.conf" || echo "AgrOS: the EFI partition's minimum size left as CachyOS has it"
 # The step that sets up the login screen (and the boot menu, splash, snapshots after it): CachyOS's own where it has
 # one; its newer branches have no such step (and greetd commented out of displaymanager), so there it's added, before
 # the btrfs snapshot (or the clean-up), as CachyOS's older branch has it

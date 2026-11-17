@@ -284,6 +284,11 @@ as the partition names, from the palette and not the stylesheet.
   installed), `pacstrap` and `grubcfg` (their `main.py`) take GRUB when nothing was chosen, and the partition page
   starts on GRUB's settings (`partition.conf`: the boot partition at `/boot/efi`, 512 MB, as CachyOS's GRUB override
   has it), with `allowZfsEncryption: false` there too. Fails if any of these didn't apply.
+- Installing beside Windows: an EFI partition already on the disk is used down to 64 MB (`partition.conf`'s
+  `efi.minimumSize`, added; a minimum CachyOS sets is kept), not refused below the 512 MB a new one is made. Windows
+  makes its own 100 MB, and **Install alongside** and **Replace a partition** stayed greyed out ("too small"); GRUB needs
+  a few MB there, the kernels being on the system's partition. agros's rebuild of the installer checks this minimum on
+  the install-type page (CachyOS's checks the 512 MB).
 
 ### The branding
 
@@ -318,7 +323,8 @@ listed after it in all three `pacman.conf` files, so pacman goes there only when
   theme's text colours, the package list's highlight cleared on a click on no row, and the language list's English names
   readable on the highlighted row; and GRUB only: where its compiled modules read the bootloader page's choice (the ZFS
   pool's GRUB compatibility, the partition page's GRUB settings, its BIOS hint, the boot partition on erase-disk), GRUB,
-  as `agros-calamares-config` does for the Python ones. The live system has the rebuild that was current when the ISO
+  as `agros-calamares-config` does for the Python ones; and an existing EFI partition checked against the minimum size,
+  not the size of a new one (Windows' 100 MB one can be installed beside). The live system has the rebuild that was current when the ISO
   was built; agros's CI starts a new ISO after it publishes packages.
 
 So the repo has to be published before you build: the build's pacman reads it, and so does the installer.
