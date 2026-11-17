@@ -16,7 +16,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `buildiso.sh` | The entry point: reads the options, sets up the work folder, runs the build |
 | `util.sh` | Helpers: the timer, the build's requirements (`check_requirements`), no `$` in AgrOS's commands for Calamares (`check_calamares_commands`), every name in the installer's package list in the repos (`check_netinstall`), checksums (`create_chksums`), signing (`sign_with_key`) and checking a signature is AgrOS's (`verify_agros_sig`), the upstream gate (`gate_list`, `gate_plan`, `gate_waits`, `check_gate`: the ISO's Hyprland and its libraries only at versions AgrOS's CI approved; `gate_fetch` and `gate_verify`: their copy kept on the ISO for the installer), a key file's fingerprint (`key_fpr`), the output folder (`iso_out_dir`, `out/desktop`) and the newest ISO in it (`newest_iso`), the user who ran `sudo` (`invoking_user`, `as_invoking_user`); also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow |
 | `util-iso.sh` | The build itself: `prepare_profile` and `run_build`, the console welcome, the ISO's file name |
-| `agros-trim.sh` | What the live ISO leaves out, made on the build's copy of the profile (`prepare_profile` runs it), never on CachyOS's own files, so their changes keep merging by themselves: packages the live session and installer don't use (its `leave_out` list: `occt`, Plasma's screen reader, rescue-disk network and backup tools, extra editors, a second Chinese font, `cloud-init`, CachyOS's text installer, the UEFI Shell, disk admin tools, a test web server, an X11 mouse tool, and the compiler, `gcc`, which CachyOS's installer no longer uses to find the CPU's level; one CachyOS renamed or dropped is said in the build's log), files inside packages the live session never uses, never unpacked (a `NoExtract` line under `[options]` in the build's `pacman.conf`: the font styles nothing names, of JetBrains Mono, Cascadia and Material Symbols, Hyprland's own wallpapers, the programs' translations (the live system is `LANG=C.UTF-8`; the installer's and those it may show are kept), man and info pages, docs, NVIDIA's OptiX and DLSS libraries (games' and 3D renderers' only), CUDA's compilers and debugger and Vulkan SC (only libcuda loads them, for compute kernels), C headers and static libraries (no compiler on it), the pointer's 11 Bibata styles but the desktop's (`Bibata-Modern-Ice`), Noto CJK's serif and extra sans weights, Marvell's network-switch firmware and nouveau's older (535) GSP firmware; and the same for installed systems, but their translations, man pages and HPLIP's docs, in the installed system's `pacman-more.conf` (marked `# agros-iso`, so they're left out from the first package; `agros-system`'s install swaps it for its Include of the same list, `agros-noextract.conf` in AgrOS's repo: keep the two the same); the live system's `/etc/pacman.conf`, and so installed systems, get whole packages) and the LTS kernel (every boot entry that booted it boots the main kernel; GRUB's "LTS Kernel" and syslinux's duplicate "current kernel" entries go). Installed systems keep both kernels: the installer downloads them. When CachyOS's menus no longer look as it expects, it keeps the LTS kernel, says so in the build's log, and the build goes on. Each fallback (those two, and NoExtract not added) is a line ending in "(agros-trim.sh)", which agros's weekly size watch also puts in the Friday status |
+| `agros-trim.sh` | What the live ISO leaves out, made on the build's copy of the profile (`prepare_profile` runs it), never on CachyOS's own files, so their changes keep merging by themselves. Packages the live session and installer don't use (`leave_out`: `occt`, Plasma's screen reader, rescue-disk network and backup tools, extra editors, a second Chinese font, `cloud-init`, CachyOS's text installer, the UEFI Shell, disk admin tools, a test web server, an X11 mouse tool, and `gcc`, which CachyOS's installer no longer uses to find the CPU's level). Files inside packages never unpacked (`NoExtract` under `[options]` in the build's `pacman.conf`; the live system's own `/etc/pacman.conf` has none): the font styles nothing names (of JetBrains Mono, Cascadia and Material Symbols), Hyprland's own wallpapers, the pointer's 11 Bibata styles but the desktop's (`Bibata-Modern-Ice`), the programs' translations (the live system is `LANG=C.UTF-8`; the installer's and those it may show are kept), man and info pages, docs, NVIDIA's OptiX and DLSS libraries (games' and 3D renderers' only), CUDA's compilers and debugger and Vulkan SC (only libcuda loads them), C headers and static libraries (no compiler on it), Qt 5 and KDE Frameworks 5 (only qtengine's Qt 5 plugin needs them; the installer and the shell are Qt 6), Noto CJK's serif and extra sans weights, Marvell's network-switch firmware and nouveau's older (535) GSP firmware. Installed systems leave out only the font styles, Bibata styles, Hyprland's wallpapers and docs (fish's and HPLIP's kept), from the first package: the installed system's `pacman-more.conf` gets them (marked `# agros-iso`), which `agros-system`'s install swaps for its Include of `agros-noextract.conf` in AgrOS's repo (keep the two the same). And the LTS kernel: every boot entry that booted it boots the main kernel; GRUB's "LTS Kernel" and syslinux's duplicate "current kernel" entries go (installed systems keep both kernels: the installer downloads them). A package name CachyOS renamed or dropped, menus that no longer look as it expects (the LTS kernel kept), or NoExtract not added: said in the build's log on a line ending in "(agros-trim.sh)", which agros's weekly size watch also puts in the Friday status, and the build goes on |
 | `util-iso-mount.sh` | Unmounts what a stopped build left mounted |
 | `util-msg.sh` | Coloured messages (`msg`, `warning`, `error`, `die`; on GitHub, warnings and errors are also annotations on the run) and `import`; also used by `upload-iso.sh`, `testiso.sh`, `agros-trim.sh` and the ISO workflow's upstream gate step and publish job |
 | `upload-iso.sh` | Uploads a built ISO, with its `.sha256`, `.sig` and `.pkgs.txt`, to SourceForge (`buildiso.sh -u`, or by hand): see [Publishing the ISO](../manual/03-building.md#publishing-the-iso) |
@@ -52,6 +52,7 @@ The AgrOS ones in `archiso/airootfs/`:
 | `etc/pacman.d/hooks/agros-live-rate-mirrors-off.hook` | Turns `cachyos-rate-mirrors.timer` off on the live system once its package has enabled it (only for the build: removed afterwards, as CachyOS's build-time hooks are) |
 | `etc/pacman.d/hooks/zz-agros-live-branding.hook`, `agros-live-branding` | Puts AgrOS's name back in `/etc/os-release` and `/etc/lsb-release` after CachyOS's hooks have written CachyOS's there, as `agros-system`'s `agros-branding` does on the installed system (only for the build, removed afterwards) |
 | `usr/share/agros/netinstall.yaml` | The installer's package list |
+| `usr/share/agros/installer-splash/` | The splash shown while the installer gets ready (below) |
 | `usr/share/calamares/branding/agros/` | The installer's branding (below) |
 
 ## A build, step by step
@@ -179,7 +180,8 @@ The AgrOS ones in `archiso/airootfs/`:
   the live user straight into it (`airootfs/etc/greetd/config.toml`, enabled by `util-iso.sh`). CachyOS's Plasma
   login and KDE settings in `etc/skel` are gone. The installer opens when the session starts, and is "Install AgrOS"
   in the app menu. The menu and dock are cut down to what installing needs (`live-session-menu`, the empty
-  `pins.json`).
+  `pins.json`). `gvfs` puts drives and USB sticks in Thunar's side panel, and `ntfsprogs` lets the installer shrink
+  Windows' partition (`tests/installer-tools.sh` checks the tools its partitioning calls are on the ISO).
 - The installer is AgrOS's: its branding (`airootfs/usr/share/calamares/branding/agros`: the name, the logo and name as
   in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
   boot entry (`AgrOS`).
@@ -200,8 +202,9 @@ The AgrOS ones in `archiso/airootfs/`:
   `.automated_script.sh`, archiso's `script=` boot option runner, and the `autologin` group: greetd logs the live user
   in); the KWin keyboard-layout hook (`90-cachyos-live-kwin-keyboard.hook`, for Plasma's `cachyos-kde-settings`);
   `usr/local/share/livecd-sound`; `etc-pacman.d-gnupg.mount` (nothing used it: the ISO's `pacman-init.service` doesn't
-  require it); `bootstrap_packages.x86_64` (only for archiso's bootstrap build mode, not `iso`); and the `linux-atm`
-  package (ADSL modems' ATM tools).
+  require it); `bootstrap_packages.x86_64` (only for archiso's bootstrap build mode, not `iso`); the `linux-atm`
+  package (ADSL modems' ATM tools); and archiso's SSH server, started at boot and taking root's password login
+  (`sshd.service` enabled, `etc/ssh/sshd_config.d/10-archiso.conf`).
 - The ISO is named `agros`, and its console welcome (`util-iso.sh`'s motd) is AgrOS's.
 - The build: `-f`, `-a`, `-u` (upload to SourceForge), the low priority and half-CPU default, the per-ISO checksums and
   signature with AgrOS's key, only git's tracked files of the profile, and no "unknown error" after a good build.
@@ -217,13 +220,13 @@ The AgrOS ones in `archiso/airootfs/`:
    process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
    forward, or a new one started); still getting ready, its splash is up already.
 2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
-   Quickshell: the logo, a spinner and what it's waiting for, from a status file it writes), closed once the
-   installer's window is up or when it stops. The splash is drawn on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from
-   the session's autostart, a systemd unit, it doesn't get what the desktop sets in Hyprland's own environment, and on
-   VMware's GPU Hyprland refused its window, so it closed before it was ever seen. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
-   login, it says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
+   Quickshell: the logo, a spinner and a line from a status file it writes: "Getting the installer ready", or, offline,
+   to connect), closed once the installer's window is up or when it stops: its window takes a minute or two. It's drawn
+   on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from the session's autostart, a systemd unit, it doesn't get what the
+   desktop sets in Hyprland's own environment, and on VMware's GPU Hyprland refused its window, never seen. Waits for
+   the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first login, it
+   also says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
    minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
-   The splash says so too, and once online "Getting the installer ready" (its window takes a minute or two).
    Syncs the clock and waits for it (up to 30 seconds), since a keyring "created in the future" breaks the install.
    Waits for the ISO's `pacman-init.service` (the keyring it makes at boot), then makes a new pacman keyring and
    populates the `archlinux`, `cachyos` and `agros` keys, then installs the latest `archlinux-keyring` and
@@ -368,7 +371,10 @@ when that's safe:
 1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
    `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
-   `kf6*`, `breeze*`), and AgrOS's own installer (`agros/calamares`) stays.
+   `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes none of the files that run as
+   root or decide what's trusted (the build's scripts, the workflows, keys, `profiledef.sh`, the `pacman.conf` files,
+   and in the live system sudo, polkit, systemd units, SSH, the accounts, root's files, `usr/local/bin` and the
+   installer's settings: `sensitive` in the script): those are looked at first.
 2. That merge's ISO is built (`iso.yml` with `check`: nothing published), and the tests run on it (`tests.yml`, in a
    job of its own with a read-only token: CachyOS's code runs there).
 3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead; a push refused for

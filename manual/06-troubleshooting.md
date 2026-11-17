@@ -63,11 +63,11 @@ on many Windows 11 laptops), or there isn't 20 GB to spare on the drive. Shrink 
 and pick **Replace a partition** on the free space: see AgrOS's manual,
 [Keeping Windows](https://github.com/CrimzoAgra/agros/blob/main/manual/02-installing.md#keeping-windows).
 
-**The installer fails or won't start.** Each time it starts, it waits for the internet (up to 5 minutes, saying
-"Connect to the internet to install"), syncs the clock (waiting up to 30 seconds) and makes a
-new package keyring with the latest Arch and CachyOS keys from the internet; if that fails it says "The installer
-couldn't be set up" and stops before anything is changed. Check the internet connection and start it again (opened
-twice, the second one just stops while the first is still open). Its log, with the computer's hardware details at the
+**The installer fails or won't start.** Each time it starts, behind its splash, it waits for the internet (up to 5
+minutes, saying "Connect to the internet to install"), syncs the clock (waiting up to 30 seconds) and makes a new
+package keyring with the latest Arch and CachyOS keys from the internet; if that fails it says "The installer
+couldn't be set up" and stops before anything is changed. Check the internet connection and start it again (while
+one is still getting ready or open, **Install AgrOS** starts no second one: it brings the open one forward). Its log, with the computer's hardware details at the
 top, is `/home/liveuser/cachy-install.log`. Attach it when you [report a
 problem](https://github.com/CrimzoAgra/agros/issues).
 
