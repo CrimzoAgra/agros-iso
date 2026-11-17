@@ -20,7 +20,8 @@ for f in "$copy"/*.pkg.tar.*; do [[ -e $f && $f != *.sig ]] && pkgs+=("$f"); don
 ((${#pkgs[@]})) || { say "no Hyprland copy on this ISO: gate skipped"; exit 0; }
 # (the live system's pacman.conf: the same [agros] as the installed one's, whose Include of agros-gate.conf the live
 # system doesn't have, which pacman-conf can't read past)
-server=$(pacman-conf --repo agros Server 2>/dev/null | head -1)
+# (each of its servers in turn, as pacman tries them: GitHub Pages, then AgrOS's R2 mirror)
+mapfile -t servers < <(pacman-conf --repo agros Server 2>/dev/null)
 list=
 # (a few tries: one dropped request counted as "unreachable" put the ISO's older copy over an approved newest)
 # (a transfer that failed partway: nothing of it taken, a line cut short could read as another version)
@@ -29,15 +30,18 @@ list=
 tmp=$(mktemp -d 2>/dev/null) || tmp=
 trap '[[ -z $tmp ]] || rm -rf "$tmp"' EXIT
 stamp=$(date +%s)
-if [[ -n $server && -n $tmp ]] &&
-    curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$tmp/list" "$server/agros-approved?t=$stamp" 2>/dev/null; then
+for server in "${servers[@]}"; do
+    [[ -n $tmp ]] || break
+    rm -f "$tmp/list" "$tmp/list.sig"
+    curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$tmp/list" "$server/agros-approved?t=$stamp" 2>/dev/null ||
+        continue
     if curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$tmp/list.sig" "$server/agros-approved.sig?t=$stamp" 2>/dev/null &&
         gpgv --keyring "${AGROS_GATE_KEYRING:-/usr/share/pacman/keyrings/agros.gpg}" "$tmp/list.sig" "$tmp/list" >/dev/null 2>&1; then
         list=$(cat "$tmp/list")
-    else
-        say "the approved list has no good signature by AgrOS's key ($server/agros-approved.sig): taken as unreachable"
+        break
     fi
-fi
+    say "the approved list has no good signature by AgrOS's key ($server/agros-approved.sig): taken as unreachable"
+done
 grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" && list=
 # installed <name>: its version on the installed system (not there: empty)
 installed() { pacman -Q --dbpath "$root/var/lib/pacman" -- "$1" 2>/dev/null | cut -d' ' -f2; }

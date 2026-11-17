@@ -49,26 +49,31 @@ check_requirements(){
 # as a push starts this, it was served the old one); an empty or garbled one (an error page) stops the build rather
 # than letting anything through, and so does one without a good signature by AgrOS's key beside it (agros-approved.sig,
 # agros's CI signs it; verify_agros_sig: agros.asc alone), none or a bad one (a mirror or a network in between that
-# changed it)
+# changed it). [agros]'s servers tried in turn, as pacman tries them (GitHub Pages, then its R2 mirror): the first with
+# the list and a good signature beside it
 gate_list(){
-    local server list stamp d
+    local servers server list stamp d why=()
     # (fetched once a build: check_gate's fetch read by the build's later steps, all on the same list; a blip at the end
     # can't stop a finished build)
     if [[ -n ${gate_cache:-} && -s $gate_cache ]]; then cat "$gate_cache"; return 0; fi
-    server=$(pacman-conf --config "$src_dir/archiso/pacman.conf" --repo agros Server | head -1)
+    mapfile -t servers < <(pacman-conf --config "$src_dir/archiso/pacman.conf" --repo agros Server)
+    ((${#servers[@]})) || die "No [agros] server in %s" "$src_dir/archiso/pacman.conf"
     stamp=$(date +%s)
     d=$(mktemp -d) || die "No temporary folder for the approved list"
-    if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved" "$server/agros-approved?t=$stamp"; then
-        rm -rf "$d"
-        die "AgrOS's approved upstream versions couldn't be fetched (%s/agros-approved)" "$server"
-    fi
-    if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved.sig" "$server/agros-approved.sig?t=$stamp" ||
-        ! verify_agros_sig "$d/agros-approved"; then
-        rm -rf "$d"
-        die "AgrOS's approved upstream versions have no good signature by AgrOS's key (%s/agros-approved.sig)" "$server"
-    fi
-    list=$(cat "$d/agros-approved")
+    for server in "${servers[@]}"; do
+        if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved" "$server/agros-approved?t=$stamp"; then
+            why+=("couldn't be fetched ($server/agros-approved)")
+        elif ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved.sig" "$server/agros-approved.sig?t=$stamp" ||
+            ! verify_agros_sig "$d/agros-approved"; then
+            why+=("have no good signature by AgrOS's key ($server/agros-approved.sig)")
+        else
+            list=$(cat "$d/agros-approved")
+            break
+        fi
+        rm -f "$d/agros-approved" "$d/agros-approved.sig"
+    done
     rm -rf "$d"
+    [[ -n ${list+set} ]] || die "AgrOS's approved upstream versions %s" "$(printf '%s; ' "${why[@]}" | sed 's/; $//')"
     [[ -n $list ]] && ! grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" ||
         die "AgrOS's approved upstream versions aren't a list of them (%s/agros-approved)" "$server"
     # (kept first: a list that can't be kept stops here, said, not silently after it was printed)
