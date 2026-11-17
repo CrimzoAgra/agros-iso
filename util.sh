@@ -197,12 +197,37 @@ gate_verify(){
 # them as its own variables, and one it doesn't know stops the install. The installer checks it too, but only once it
 # runs: an ISO whose installer never opens isn't built
 check_calamares_commands(){
-    local f=$src_dir/archiso/airootfs/usr/local/bin/agros-calamares-config found
-    grep -q "shellprocess_greetd.conf\" <<'CONF'" "$f" || die "agros-calamares-config's command for Calamares not found"
-    # (the heredoc's lines after its first, numbered as in the file)
-    found=$(awk -v start="shellprocess_greetd.conf\" <<'CONF'" 'index($0, start) { on = 1; next } on && /^CONF$/ { on = 0 }
+    local f=$src_dir/archiso/airootfs/usr/local/bin/agros-calamares-config found c
+    for c in greetd agrossnapshot; do
+        grep -q "shellprocess_$c.conf\" <<'CONF'" "$f" || die "agros-calamares-config's %s command for Calamares not found" "$c"
+    done
+    # (the heredocs' lines after their first, numbered as in the file)
+    found=$(awk '/shellprocess_(greetd|agrossnapshot)\.conf" <<.CONF.$/ { on = 1; next } on && /^CONF$/ { on = 0 }
         on && /\$/ { print FILENAME ":" FNR ": " $0 }' "$f")
     [[ -z $found ]] || die "A dollar sign in agros-calamares-config's command for Calamares (it reads it as its own): %s" "$found"
+}
+
+# The installer's package list (netinstall.yaml): every name in it one the ISO's repos have (by name, group or what a
+# package provides, as pacman takes it). One CachyOS renamed or dropped failed the install at its pacstrap step, after
+# the disk was partitioned; the build stops instead, saying which. (Read as Calamares reads the file: the list items
+# with no key, a group's packages)
+check_netinstall(){
+    local conf=$src_dir/archiso/pacman.conf yaml=$src_dir/archiso/airootfs/usr/share/agros/netinstall.yaml tmp names out missing rc=0
+    names=$(sed -n 's/\r$//; /^ *#/d; s/^ *- *\([^:#[:space:]]\+\)[[:space:]]*\(#.*\)\?$/\1/p' "$yaml" | sort -u)
+    [[ -n $names ]] || die "No package names read from %s" "$yaml"
+    tmp=$(mktemp -d) || die "No temporary folder for the installer's package list"
+    # (sudo, as gate_plan: in CI the build runs as its user)
+    if ! sudo pacman -Sy --config "$conf" --dbpath "$tmp" --logfile /dev/null >/dev/null; then
+        sudo rm -rf "$tmp"
+        die "The repos couldn't be read for the installer's package list"
+    fi
+    # (-dd: each name looked up, not what it needs, which the install resolves itself)
+    # shellcheck disable=SC2086  # (one name a word)
+    out=$(LC_ALL=C sudo pacman -Sddp --noconfirm --config "$conf" --dbpath "$tmp" --print-format '%n' -- $names 2>&1 >/dev/null) || rc=$?
+    sudo rm -rf "$tmp"
+    missing=$(sed -n 's/^error: target not found: //p' <<<"$out" | paste -sd' ')
+    [[ -z $missing ]] || die "Not in the repos, in the installer's package list (netinstall.yaml): %s" "$missing"
+    ((rc == 0)) || die "The installer's package list couldn't be checked: %s" "$(tail -1 <<<"$out")"
 }
 
 # The fingerprint of the first key in a key file (agros.asc): the one place AgrOS's key is named, for the build's

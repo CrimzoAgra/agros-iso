@@ -111,6 +111,8 @@ mkdir -p "${work_dir}"
 
 check_requirements
 check_gate
+# (the installer's package list, against the same repos: a name CachyOS renamed or dropped, an install that fails)
+check_netinstall
 
 run_build "${build_list_iso}"
 # (finished: the EXIT trap was only for a build that stops halfway, it said "unknown error" after every good one too)
