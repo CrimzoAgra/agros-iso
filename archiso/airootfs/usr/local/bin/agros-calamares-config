@@ -33,7 +33,7 @@ script:
       # ranked mirrors) were copied over them: six .pacnew files on a new install, nothing in them to merge
       rm -f /etc/pacman.conf.pacnew /etc/resolv.conf.pacnew /etc/pacman.d/*mirrorlist.pacnew
       # The snapshots the install's own package runs made (snap-pac's pre/post pairs): the boot menu's snapshot list
-      # starts with the installation's own snapshot alone (taken after this step: the btrfs step below adds it to the menu)
+      # starts with the installation's own snapshot alone (taken after this step: AgrOS's snapshot step adds it to the menu)
       # (no dollar signs in this command: Calamares reads one followed by a name as its own variable, and stops the
       # install on one it doesn't know; it has no way to pass a plain one to the shell)
       # (plain numbers only: not the header, the current state 0, or a number with a marker after it. No snapshots
@@ -59,37 +59,78 @@ script:
         cp -f /etc/greetd/caelestia-greeter/greetd-config.toml /etc/greetd/config.toml
         chmod 644 /etc/greetd/config.toml
       fi
-      # (last: its result is the step's) CachyOS's dmcheck only enables greetd for noctalia-greeter
+      # (last: its result is the step's) greetd as the login screen: CachyOS's installer enables it only for noctalia-greeter
       ln -sf /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service
 i18n:
   name: "Configuring the AgrOS login screen..."
 CONF
-# No dollar sign at all in its commands: Calamares reads $name as its own variable (one it doesn't know failed the whole
-# install, after the disk was wiped), turns $$ into \$, and tracks quotes without knowing comments, so which ones it
-# reads depends on the apostrophes before them. (buildiso.sh checks the same, so such an ISO isn't built)
-! grep -n '\$' "$mods/shellprocess_greetd.conf" ||
-    fail "a dollar sign Calamares would read as its own in $mods/shellprocess_greetd.conf"
+# The installation's snapshot (CachyOS's btrfs_snapshot step: a script of theirs, or on their newer branches their
+# installer's own code, gucc, which names it in C++) named AgrOS's, and in GRUB's menu from the first boot: their step
+# runs after the boot menu was made, and grub-btrfsd only adds snapshots taken after it starts (once: the installer
+# restarted). A step of AgrOS's right after theirs, whichever it is (set up below)
+cat >"$mods/shellprocess_agrossnapshot.conf" <<'CONF'
+---
+dontChroot: false
+timeout: 300
+script:
+ - command: |
+      # (no dollar signs, as in the greetd step. Not btrfs, or no snapshot taken: nothing to do)
+      if snapper --no-dbus -c root --csvout list --columns number,description >/tmp/agros-snapshots 2>/dev/null; then
+        grep -x '[1-9][0-9]*,Fresh .* Installation' /tmp/agros-snapshots | cut -d, -f1 |
+          xargs -r -I{} snapper --no-dbus -c root modify --description 'Fresh AgrOS Installation' {} ||
+          echo "AgrOS: the installation snapshot not renamed"
+        if [ -x /etc/grub.d/41_snapshots-btrfs ] && [ -d /boot/grub ]; then
+          grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 || echo "AgrOS: the installation snapshot not added to the boot menu"
+        fi
+      elif [ -d /.snapshots ]; then
+        echo "AgrOS: the snapshots not listed: the installation snapshot not renamed, nor added to the boot menu"
+      fi
+      rm -f /tmp/agros-snapshots
+i18n:
+  name: "Naming the installation snapshot..."
+CONF
+# No dollar sign at all in their commands: Calamares reads $name as its own variable (one it doesn't know failed the
+# whole install, after the disk was wiped), turns $$ into \$, and tracks quotes without knowing comments, so which ones
+# it reads depends on the apostrophes before them. (buildiso.sh checks the same, so such an ISO isn't built)
+for f in shellprocess_greetd.conf shellprocess_agrossnapshot.conf; do
+    ! grep -n '\$' "$mods/$f" || fail "a dollar sign Calamares would read as its own in $mods/$f"
+done
 # AgrOS's branding (/usr/share/calamares/branding/agros: its name, logo, colours, its own step bar and stylesheet in
 # the desktop's style); AgrOS's name in the install steps that say CachyOS's, and in the computer name it suggests
 sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i -e '/^ *name.*:/s/CachyOS/AgrOS/' -e '/^ *name\[fr\]:/s/pour le AgrOS/pour AgrOS/' -e "/^ *name\\[fr\\]:/s/ de AgrOS/ d'AgrOS/" \
     "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true  # (French: "le/de CachyOS")
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
-# The first snapshot's name (Calamares's btrfs step), and the snapshot in GRUB's menu from the first boot: the step runs
-# after the boot menu was made, and grub-btrfsd only adds snapshots taken after it starts (once: the installer restarted)
-snap="${settings%/*}/scripts/btrfs-installation-snapshot"
-sed -i 's/Fresh CachyOS/Fresh AgrOS/' "$snap" 2>/dev/null || true
-if [ -f "$snap" ] && ! grep -q 'agros: menu' "$snap"; then
-    echo '[ -x /etc/grub.d/41_snapshots-btrfs ] && [ -d /boot/grub ] && grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 || true  # agros: menu' >>"$snap"
-fi
 # The boot entry the firmware lists (and GRUB's folder on the boot partition, EFI/AgrOS)
 sed -i 's/^efiBootloaderId: .*/efiBootloaderId: "AgrOS"/' "$mods/bootloader.conf" 2>/dev/null || true
-# CachyOS's remove-nvidia isn't on the ISO (only its offline install's shellprocess-before runs it): not copied to the
-# new system, where each install logged "Failed to copy file /usr/local/bin/remove-nvidia"
-if [ -f "$mods/pacstrap.conf" ]; then
-    sed -i '\|^ *- *"\?/usr/local/bin/remove-nvidia"\?$|d' "$mods/pacstrap.conf"
-    grep -q 'remove-nvidia' "$mods/pacstrap.conf" && fail "remove-nvidia is still in $mods/pacstrap.conf's postInstallFiles"
-fi
+# Two scripts of CachyOS's ISO that AgrOS's ISO doesn't have: remove-nvidia (only CachyOS's offline install runs it) and
+# dmcheck (it picks the login screen: the greetd step above does that). Neither copied to the new system (each install
+# logged "Failed to copy file") nor run there: the cachyos branch's installer runs /usr/local/bin/dmcheck in the new
+# system, and missing, it failed the install at its end, after the disk was wiped
+# drop_item <file> <path>: the list items naming <path>, with their own keys under them (a command's verbose:, timeout:)
+drop_item() {
+    [ -f "$1" ] || return 0
+    awk -v p="$2" '
+        skip && match($0, /^ */) && RLENGTH > ind { next }
+        { skip = 0; s = $0; sub(/["\047]$/, "", s) }
+        s ~ /^ *- / && length(s) >= length(p) && substr(s, length(s) - length(p) + 1) == p { match(s, /^ */); ind = RLENGTH; skip = 1; next }
+        { print }' "$1" >"$1.agros" && cat "$1.agros" >"$1" && rm -f "$1.agros"
+}
+for f in pacstrap.conf shellprocess.conf; do
+    drop_item "$mods/$f" /usr/local/bin/remove-nvidia
+    drop_item "$mods/$f" /usr/local/bin/dmcheck
+    ! grep -q '/usr/local/bin/\(remove-nvidia\|dmcheck\)' "$mods/$f" 2>/dev/null || fail "remove-nvidia or dmcheck is still in $mods/$f"
+done
+# And none other the install runs from /usr/local/bin and this ISO lacks (CachyOS's ISO has more there): said now, not
+# after the disk was wiped. The steps of settings.conf, and shellprocess.conf (the plain shellprocess step); a command
+# allowed to fail (its "-") and the files pacstrap copies (a warning when missing) left out
+for f in shellprocess.conf $(sed -n 's/^ *config: *//p' "$settings"); do
+    [ -f "$mods/$f" ] || continue
+    while read -r x; do
+        [ -e "$x" ] || fail "the installer runs $x, which this ISO doesn't have ($mods/$f)"
+    done < <(grep -v '^ *#' "$mods/$f" | grep -v '^ *- *\(command: *\)\?["'\'']\?-' |
+        sed -n 's|.*\(/usr/local/bin/[^"'\'' ]*\).*|\1|p')
+done
 
 # No desktop page: AgrOS is the desktop
 sed -i '/^  - packagechooser@desktop$/d' "$settings"
@@ -131,18 +172,37 @@ fi
 grep -q '^ \+minimumSize:' "$mods/partition.conf" || echo "AgrOS: the EFI partition's minimum size left as CachyOS has it"
 # The step that sets up the login screen (and the boot menu, splash, snapshots after it): CachyOS's own where it has
 # one; its newer branches have no such step (and greetd commented out of displaymanager), so there it's added, before
-# the btrfs snapshot (or the clean-up), as CachyOS's older branch has it
+# the btrfs snapshot, whichever module takes it (a shellprocess script, or gucc on their newer branches), or before the
+# clean-up, as CachyOS's older branch has it
+# step_at <step>: its line in settings.conf's sequence (none: empty)
+step_at() { grep -n "^ *- $1\$" "$settings" | head -1 | cut -d: -f1 || true; }
+snapshot='[^ @]*@btrfs_snapshot'
 if ! grep -q '^ *- shellprocess@greetd$' "$settings"; then
     grep -q '^- id: *greetd$' "$settings" ||
         sed -i 's/^- id: *cleanup_calamares$/- id:       greetd\n  module:   shellprocess\n  config:   shellprocess_greetd.conf\n\n&/' "$settings"
-    if grep -q '^  - shellprocess@btrfs_snapshot$' "$settings"; then
-        sed -i 's/^  - shellprocess@btrfs_snapshot$/  - shellprocess@greetd\n&/' "$settings"
+    if [[ -n $(step_at "$snapshot") ]]; then
+        sed -i "s/^\\( *\\)- $snapshot\$/\\1- shellprocess@greetd\\n&/" "$settings"
     else
         sed -i 's/^  - shellprocess@cleanup_calamares$/  - shellprocess@greetd\n&/' "$settings"
     fi
 fi
 grep -q '^ *- shellprocess@greetd$' "$settings" && grep -q '^- id: *greetd$' "$settings" ||
     fail "the installer's greetd step couldn't be set up ($settings)"
+# (before the snapshot, or its clean-up of the install's snapshots would delete it, and it wouldn't hold the login screen)
+s=$(step_at "$snapshot")
+[[ -z $s || $(step_at shellprocess@greetd) -lt $s ]] || fail "the installer's greetd step is after the btrfs snapshot ($settings)"
+# AgrOS's snapshot step (above) right after the snapshot; none to name without it, said
+if [[ -n $s ]]; then
+    grep -q '^- id: *agrossnapshot$' "$settings" ||
+        sed -i 's/^- id: *greetd$/- id:       agrossnapshot\n  module:   shellprocess\n  config:   shellprocess_agrossnapshot.conf\n\n&/' "$settings"
+    [[ -n $(step_at shellprocess@agrossnapshot) ]] ||
+        sed -i "s/^\\( *\\)- $snapshot\$/&\\n\\1- shellprocess@agrossnapshot/" "$settings"
+    a=$(step_at shellprocess@agrossnapshot) s=$(step_at "$snapshot")
+    [[ -n $a && $a -gt $s ]] && grep -q '^- id: *agrossnapshot$' "$settings" ||
+        fail "the installer's step naming the installation snapshot couldn't be set up after it ($settings)"
+else
+    echo "AgrOS: no btrfs snapshot step in $settings: no installation snapshot to name"
+fi
 # The upstream gate for the install (agros-gate-install, on the live system: the ISO's own copy of Hyprland and its
 # libraries installed when the newest the install downloaded isn't approved yet), after the packages, before the step
 # above. ${ROOT}: one of Calamares's own variables, the installed system's root. An hour, as CachyOS's own steps have:
@@ -166,6 +226,6 @@ grep -q '^ *- shellprocess@agrosgate$' "$settings" ||
 grep -q '^ *- shellprocess@agrosgate$' "$settings" && grep -q '^- id: *agrosgate$' "$settings" ||
     fail "the installer's upstream gate step couldn't be set up ($settings)"
 # Any other Python step reading the bootloader page's choice (none: no such page) than those that cope with it
-others=$(grep -rl 'packagechooser_bootloader' "$pymods" --include=*.py | grep -v '/\(pacstrap\|grubcfg\|chwd\)/main\.py$' || true)
+others=$(grep -rl 'packagechooser_bootloader' "$pymods" --include=*.py | grep -v '/\(pacstrap\|grubcfg\)/main\.py$' || true)
 [[ -z $others ]] || fail "installer steps reading the bootloader choice: $others"
 echo "AgrOS: installer configured."

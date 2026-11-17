@@ -14,7 +14,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | Path | What it is |
 |---|---|
 | `buildiso.sh` | The entry point: reads the options, sets up the work folder, runs the build |
-| `util.sh` | Helpers: the timer, the build's requirements (`check_requirements`), no `$` in AgrOS's commands for Calamares (`check_calamares_commands`), checksums (`create_chksums`), signing (`sign_with_key`) and checking a signature is AgrOS's (`verify_agros_sig`), the upstream gate (`gate_list`, `gate_plan`, `gate_waits`, `check_gate`: the ISO's Hyprland and its libraries only at versions AgrOS's CI approved; `gate_fetch` and `gate_verify`: their copy kept on the ISO for the installer), a key file's fingerprint (`key_fpr`), the output folder (`iso_out_dir`, `out/desktop`) and the newest ISO in it (`newest_iso`), the user who ran `sudo` (`invoking_user`, `as_invoking_user`); also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow |
+| `util.sh` | Helpers: the timer, the build's requirements (`check_requirements`), no `$` in AgrOS's commands for Calamares (`check_calamares_commands`), every name in the installer's package list in the repos (`check_netinstall`), checksums (`create_chksums`), signing (`sign_with_key`) and checking a signature is AgrOS's (`verify_agros_sig`), the upstream gate (`gate_list`, `gate_plan`, `gate_waits`, `check_gate`: the ISO's Hyprland and its libraries only at versions AgrOS's CI approved; `gate_fetch` and `gate_verify`: their copy kept on the ISO for the installer), a key file's fingerprint (`key_fpr`), the output folder (`iso_out_dir`, `out/desktop`) and the newest ISO in it (`newest_iso`), the user who ran `sudo` (`invoking_user`, `as_invoking_user`); also used by `upload-iso.sh`, `testiso.sh` and the ISO workflow |
 | `util-iso.sh` | The build itself: `prepare_profile` and `run_build`, the console welcome, the ISO's file name |
 | `agros-trim.sh` | What the live ISO leaves out, made on the build's copy of the profile (`prepare_profile` runs it), never on CachyOS's own files, so their changes keep merging by themselves: packages the live session and installer don't use (its `leave_out` list: `occt`, Plasma's screen reader, rescue-disk network and backup tools, extra editors, a second Chinese font, `cloud-init`, CachyOS's text installer, the UEFI Shell, disk admin tools, a test web server, an X11 mouse tool, and the compiler, `gcc`, which CachyOS's installer no longer uses to find the CPU's level; one CachyOS renamed or dropped is said in the build's log), files inside packages the live session never uses, never unpacked (a `NoExtract` line under `[options]` in the build's `pacman.conf`: the font styles nothing names, of JetBrains Mono, Cascadia and Material Symbols, Hyprland's own wallpapers, the programs' translations (the live system is `LANG=C.UTF-8`; the installer's and those it may show are kept), man and info pages, docs, NVIDIA's OptiX and DLSS libraries (games' and 3D renderers' only), CUDA's compilers and debugger and Vulkan SC (only libcuda loads them, for compute kernels), C headers and static libraries (no compiler on it), the pointer's 11 Bibata styles but the desktop's (`Bibata-Modern-Ice`), Noto CJK's serif and extra sans weights, Marvell's network-switch firmware and nouveau's older (535) GSP firmware; and the same for installed systems, but their translations, man pages and HPLIP's docs, in the installed system's `pacman-more.conf` (marked `# agros-iso`, so they're left out from the first package; `agros-system`'s install swaps it for its Include of the same list, `agros-noextract.conf` in AgrOS's repo: keep the two the same); the live system's `/etc/pacman.conf`, and so installed systems, get whole packages) and the LTS kernel (every boot entry that booted it boots the main kernel; GRUB's "LTS Kernel" and syslinux's duplicate "current kernel" entries go). Installed systems keep both kernels: the installer downloads them. When CachyOS's menus no longer look as it expects, it keeps the LTS kernel, says so in the build's log, and the build goes on. Each fallback (those two, and NoExtract not added) is a line ending in "(agros-trim.sh)", which agros's weekly size watch also puts in the Friday status |
 | `util-iso-mount.sh` | Unmounts what a stopped build left mounted |
@@ -80,6 +80,9 @@ The AgrOS ones in `archiso/airootfs/`:
    ISO is made, before it takes its name (`gate_verify`, on mkarchiso's own tree, what went into the ISO): only gated
    packages, every gated one the ISO has, at its own versions (a mirror updated mid-build, or the installer would put
    in another Hyprland than the live system's) and approved; else the ISO is deleted and the build stops.
+   Then `check_netinstall`: every package name in the installer's list (`netinstall.yaml`) one the build's repos have
+   (by name, group or what a package provides), else the build stops, naming them: one CachyOS renamed or dropped
+   failed every install at its pacstrap step, after the disk was partitioned.
 2. **`run_build`** deletes the old work folder (not with `-c`, which resumes a stopped build; `buildiso.sh` refuses it
    when the folder has mkarchiso's last marker, `iso._build_iso_image`) and copies `archiso/` into it: only the files
    git tracks (`copy_profile`, `git ls-files`; edits not committed yet included), so what an older checkout's build
@@ -148,6 +151,7 @@ The AgrOS ones in `archiso/airootfs/`:
   - No **CachyOS Handhelds** group: its `cachyos-handheld` brings Plasma's login manager and Steam's gamescope session,
     a second login screen and desktop next to AgrOS's (the hidden handheld kernels group stays).
   - No **Support for HP Printer/Scanner** group (unticked by CachyOS): `agros-desktop` has CUPS and HPLIP already.
+  - No **Plymouth** group (the boot splash): `agros-desktop`'s `agros-boot` needs the same three packages.
   - No **Firefox and language package** (`agros-desktop` has LibreWolf), Alacritty (AgrOS's terminal is foot),
     `cachyos-hello` (AgrOS has `agros-welcome`), `cachyos-fish-config` and `cachyos-micro-settings`
     (`agros-hyprland-settings` has AgrOS's own fish and micro settings in `/etc/skel`, and replaces them).
@@ -178,8 +182,9 @@ The AgrOS ones in `archiso/airootfs/`:
   in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
   boot entry (`AgrOS`).
 - The boot menus say AgrOS (GRUB and the BIOS menu; the kernel's own files keep their names). CachyOS's unused
-  systemd-boot entries (`efiboot/`), its `remove-nvidia` (and so out of the files the installer copies to the new
-  system, below) and its `linux.preset` (for Arch's `linux`, not on the ISO:
+  systemd-boot entries (`efiboot/`), its `usr/local/bin` scripts for its offline install and its desktops
+  (`remove-nvidia`, `removeun`, `removeun-online`, `choose-mirror`, `prepare-live-desktop.sh` and `dmcheck`; the last
+  two the installer would copy to the new system and run there: out of its steps, below) and its `linux.preset` (for Arch's `linux`, not on the ISO:
   it only built the LTS kernel's initramfs a second time; each kernel's own preset uses the `archiso.conf` drop-in)
   are gone. The BIOS menu's background is the AgrOS banner and its title is in the logo's colour (`#bec4ee`).
 - No boot text on the menus' normal entries (GRUB's `grub.cfg` and `loopback.cfg`, syslinux's BIOS and PXE ones):
@@ -265,18 +270,27 @@ as the partition names, from the palette and not the stylesheet.
   that GRUB is set up (agros-boot's own install runs before `/boot/grub` exists, and the `grubcfg` and `plymouthcfg`
   steps set CachyOS's after it; on an AMD GPU `splash-theme` keeps the plain `cachyos` theme CachyOS's `plymouthcfg`
   picks there, as its animated one breaks on some AMD GPUs); and last, copies `caelestia-greeter`'s greetd
-  config into place and enables greetd (CachyOS's `dmcheck` only enables greetd for `noctalia-greeter`, so without
-  this AgrOS would boot to a text login). It also names the first snapshot "Fresh AgrOS Installation", and has the
-  btrfs step that takes it (after this one) remake GRUB's menu, so the snapshot is in it from the first boot.
-  Its command has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
+  config into place and enables greetd (CachyOS's installer enables greetd only for its `noctalia-greeter`, so without
+  this AgrOS would boot to a text login). Added where CachyOS's settings don't have it (the `cachyos` branch), before
+  the btrfs snapshot whichever module takes it (a `shellprocess` script, or `gucc`, CachyOS's installer's own code, on
+  their newer branches), else before the cleanup; one after the snapshot (it would delete it) fails.
+- `shellprocess_agrossnapshot.conf` (right after CachyOS's btrfs snapshot step, in the new system): names the
+  installation's snapshot "Fresh AgrOS Installation" (`snapper modify`: `gucc` names it in C++, so not in a script of
+  theirs) and remakes GRUB's menu, so the snapshot is in it from the first boot (grub-btrfsd only adds snapshots taken
+  after it starts). No snapshot step: said, and not added. Each of its failures said, never the install's.
+  Its command, as the greetd step's, has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
   variable (one it doesn't know stops the whole install), turns `$$` into `\$`, and tracks quotes without knowing
   shell comments. `agros-calamares-config` refuses to start the installer with one, and `buildiso.sh` refuses to build
   an ISO with one (`check_calamares_commands` in `util.sh`).
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
-  firmware's boot entry and GRUB's folder `EFI/AgrOS`; and `/usr/local/bin/remove-nvidia` out of `pacstrap.conf`'s
-  `postInstallFiles` (not on the ISO: each install logged "Failed to copy file /usr/local/bin/remove-nvidia"; only the
-  offline install's `shellprocess-before` runs it), failing if it's still there.
+  firmware's boot entry and GRUB's folder `EFI/AgrOS`.
+- CachyOS's `remove-nvidia` and `dmcheck`, scripts of its ISO that AgrOS's doesn't have, out of what the install copies
+  to the new system (`pacstrap.conf`'s `postInstallFiles`: each install logged "Failed to copy file") and runs there
+  (`shellprocess.conf`: CachyOS's `cachyos` branch runs `/usr/local/bin/dmcheck`, which picks the login screen, as the
+  greetd step does; missing, it failed the install at its end, after the disk was wiped), with the keys of a command
+  under it; fails if either is still there. Any other command of the install's steps from `/usr/local/bin` that the
+  ISO doesn't have stops it the same way, before anything is changed on the disks (not one allowed to fail, its `-`).
 - Removes `packagechooser@desktop`, and fails if it's still there.
 - GRUB only, with no bootloader page (AgrOS's hidden boot menu, its theme and the snapshots in it are GRUB's): removes
   `packagechooser@bootloader`, whose choice (Limine by default) the rest of the installer reads. So the `bootloader`
