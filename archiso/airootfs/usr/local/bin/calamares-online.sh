@@ -12,9 +12,8 @@ notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet 
 # /tmp could be planted or watched by another account
 splash_file=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/agros-installer-splash}
 splash() { [[ -z $splash_file ]] || printf '%s\n' "$1" >"$splash_file"; }
-# (drawn on the CPU: started at login, from the session's autostart (a systemd unit), it lacks the
-# LIBGL_ALWAYS_SOFTWARE the desktop sets in Hyprland's own environment on VMware's GPU, so Hyprland refused its
-# GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU on any machine)
+# (drawn on the CPU, set here on any machine rather than left to the desktop's VMware fallback: on VMware's GPU without
+# the shim, Hyprland refuses a GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU)
 # splash_show: the splash opened, unless one is up. The splash itself holds its lock (taken before it starts, so two
 # starts at once can't both open one), and its pid is in a file: a second start of this reopens one the user closed,
 # and the first run closes whichever is up
