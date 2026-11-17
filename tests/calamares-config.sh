@@ -6,7 +6,7 @@
 # ISO lacks (dmcheck, remove-nvidia) out of what the install copies and runs, any other it would run caught before it
 # starts. And the room the installer asks for, AgrOS's. On copies of CachyOS's files' lines it reads (settings.conf,
 # bootloader.conf, partition.conf, welcome_online.conf, pacstrap.conf, shellprocess.conf, the bootloader choice in two
-# Python steps)
+# Python steps, the fallback loader's copy in a third)
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -27,6 +27,10 @@ setup() {
     for m in pacstrap grubcfg; do
         echo '    bootloader = libcalamares.globalstorage.value("packagechooser_bootloader")' >"$t/c/py/$m/main.py"
     done
+    # (the bootloader step's GRUB copy over the firmware's fallback loader, as their main.py has it)
+    mkdir -p "$t/c/py/bootloader"
+    printf '%s\n' '        fallback = "installEFIFallback"' '        if libcalamares.job.configuration.get(fallback, True):' \
+        '            shutil.copy2(efi_file_source, efi_file_target)' >"$t/c/py/bootloader/main.py"
 }
 snapstep="  - shellprocess@btrfs_snapshot"
 run() { bash "$cfg" "$t/c/settings.conf" "$t/c/modules" "$t/c/py" 2>&1; }
@@ -156,6 +160,36 @@ out=$(snap 'number,description\n0,current\n1,Fresh CachyOS install\n')
 [[ ! -e $t/renamed ]] || fail "a snapshot renamed though none is the installation's: $(cat "$t/renamed")"
 grep -q "no snapshot described as the installation's" <<<"$out" || fail "no installation snapshot, not said: $out"
 [[ -z $(ls -A "$t/tmp") ]] || fail "the step's temporary files left: $(ls -A "$t/tmp")"
+
+# Beside Windows, the firmware's fallback loader kept: GRUB copied over it only with no Windows boot manager on the boot
+# partition (the patched condition run as the step would, where python3 is there), once over two runs. The step changed
+# by CachyOS: said, the installer configured all the same
+setup ""
+out=$(run) && out=$(run) || fail "it failed: $out"
+b=$t/c/py/bootloader/main.py
+[[ $(grep -c 'bootmgfw' "$b") == 1 ]] || fail "the fallback copy not made conditional, once: $(cat "$b")"
+grep -q "fallback loader" <<<"$out" && fail "said as not patched, though it was: $out"
+cond=$(sed -n 's/^ *if \(libcalamares\.job\.configuration\.get(fallback, True) and .*\):$/\1/p' "$b")
+[[ -n $cond ]] || fail "the patched condition not found: $(cat "$b")"
+if python3 -c 'import os' 2>/dev/null; then
+    # copies <esp>: the step's condition on that EFI folder, True when GRUB would be copied over the fallback loader
+    copies() {
+        python3 -c 'import os, sys
+class job: configuration = {"installEFIFallback": True}
+class libcalamares: job = job
+fallback, install_efi_directory_firmware = "installEFIFallback", sys.argv[2]
+print(eval(sys.argv[1]))' "$cond" "$1"
+    }
+    mkdir -p "$t/esp/EFI/Boot"
+    [[ $(copies "$t/esp/EFI") == True ]] || fail "GRUB not copied as the fallback with no Windows: $cond"
+    mkdir -p "$t/esp/EFI/Microsoft/Boot" && : >"$t/esp/EFI/Microsoft/Boot/bootmgfw.efi"
+    [[ $(copies "$t/esp/EFI") == False ]] || fail "GRUB copied over Windows' fallback loader: $cond"
+fi
+setup ""
+echo '        if libcalamares.job.configuration.get("installEFIFallback"):' >"$b"
+out=$(run) || fail "it failed with the step changed: $out"
+grep -q "fallback loader left to CachyOS's step" <<<"$out" && grep -q 'installer configured' <<<"$out" ||
+    fail "the step changed, not said, or not configured: $out"
 
 # A file it edits gone (CachyOS moved it), after a note was said: the installer not started, and its last "AgrOS: "
 # line, the one calamares-online.sh shows, says that, not the note

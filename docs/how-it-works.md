@@ -323,6 +323,12 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
   makes its own 100 MB, and **Install alongside** and **Replace a partition** stayed greyed out ("too small"); GRUB needs
   a few MB there, the kernels being on the system's partition. agros's rebuild of the installer checks this minimum on
   the install-type page (CachyOS's checks the 512 MB).
+- Beside Windows, the firmware's fallback loader (`EFI/Boot/bootx64.efi`, Windows' copy of its boot manager) is
+  kept: CachyOS's `bootloader.conf` has `installEFIFallback: true`, and the `bootloader` step (its `main.py`) copied
+  GRUB over it. A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a
+  reset), then came to AgrOS instead, or with Secure Boot on maybe to nothing (GRUB's copy isn't signed). The copy is
+  made only when there's no `EFI/Microsoft/Boot/bootmgfw.efi` on the boot partition, so a disk with AgrOS alone still
+  gets it. Not patched (CachyOS changed the step): said, and the installer starts as before.
 
 ### The branding
 
