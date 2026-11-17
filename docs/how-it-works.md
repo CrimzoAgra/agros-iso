@@ -52,6 +52,7 @@ The AgrOS ones in `archiso/airootfs/`:
 | `etc/pacman.d/hooks/agros-live-rate-mirrors-off.hook` | Turns `cachyos-rate-mirrors.timer` off on the live system once its package has enabled it (only for the build: removed afterwards, as CachyOS's build-time hooks are) |
 | `etc/pacman.d/hooks/zz-agros-live-branding.hook`, `agros-live-branding` | Puts AgrOS's name back in `/etc/os-release` and `/etc/lsb-release` after CachyOS's hooks have written CachyOS's there, as `agros-system`'s `agros-branding` does on the installed system (only for the build, removed afterwards) |
 | `usr/share/agros/netinstall.yaml` | The installer's package list |
+| `usr/share/agros/installer-splash/` | The splash shown while the installer gets ready (below) |
 | `usr/share/calamares/branding/agros/` | The installer's branding (below) |
 
 ## A build, step by step
