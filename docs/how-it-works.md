@@ -215,13 +215,15 @@ The AgrOS ones in `archiso/airootfs/`:
 
 `calamares-online.sh` (CachyOS's, with AgrOS's lines):
 
-1. Already running (a lock in `$XDG_RUNTIME_DIR`, held until the installer closes), it doesn't start a second one: its
+1. Already running (a lock in `$XDG_RUNTIME_DIR`, or the home without one, never the shared `/tmp`; held until the
+   installer closes), it doesn't start a second one: its
    window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
    process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
    forward, or a new one started); still getting ready, its splash is up already.
 2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
-   Quickshell: the logo, a spinner and a line from a status file it writes: "Getting the installer ready", or, offline,
-   to connect), closed once the installer's window is up or when it stops: its window takes a minute or two. It's drawn
+   Quickshell: the logo, a spinner and a line from a status file it writes in `$XDG_RUNTIME_DIR`: "Getting the installer ready",
+   or, offline, to connect; no `XDG_RUNTIME_DIR`, no splash, as a fixed name in `/tmp` could be planted or watched by
+   another account), closed once the installer's window is up or when it stops: its window takes a minute or two. It's drawn
    on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from the session's autostart, a systemd unit, it doesn't get what the
    desktop sets in Hyprland's own environment, and on VMware's GPU Hyprland refused its window, never seen. Waits for
    the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first login, it

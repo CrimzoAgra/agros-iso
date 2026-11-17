@@ -8,13 +8,15 @@ online() { [[ $(nmcli networking connectivity check 2>/dev/null) == full ]]; }
 notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet to install" "The installer opens once you're connected."; }
 # AgrOS: a splash while it gets ready (online, the clock, the package keys: a minute or two before its window opens,
 # where nothing showed), its line of text from the status file; closed once the installer's window is up, or when this
-# stops (the installer not set up: said in a notification)
-splash_file=${XDG_RUNTIME_DIR:-/tmp}/agros-installer-splash
-splash() { printf '%s\n' "$1" >"$splash_file"; }
+# stops (the installer not set up: said in a notification). No XDG_RUNTIME_DIR, no splash: a fixed name in the shared
+# /tmp could be planted or watched by another account
+splash_file=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/agros-installer-splash}
+splash() { [[ -z $splash_file ]] || printf '%s\n' "$1" >"$splash_file"; }
 # (drawn on the CPU: started at login, from the session's autostart (a systemd unit), it lacks the
 # LIBGL_ALWAYS_SOFTWARE the desktop sets in Hyprland's own environment on VMware's GPU, so Hyprland refused its
 # GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU on any machine)
 splash_open() {
+    [[ -n $splash_file ]] || return 0
     splash "$1"
     LIBGL_ALWAYS_SOFTWARE=1 qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&- &
     splash_pid=$!
@@ -33,7 +35,8 @@ main() {
     # AgrOS: one at a time. Started again (from the menu, while the one the session opened is still starting or open),
     # it starts no second one (two reset the keyring under each other): it brings the open installer forward, waits for
     # its window, or (offline) says again to connect. The lock is held until the installer closes
-    exec 9>"${XDG_RUNTIME_DIR:-/tmp}/calamares-online.lock"
+    # (no XDG_RUNTIME_DIR: in the user's home, not the shared /tmp, where another account could plant or hold it)
+    exec 9>"${XDG_RUNTIME_DIR:-$HOME}/.calamares-online.lock"
     if ! flock -n 9; then
         # (open: brought forward, from whichever workspace it's on, by the desktop's own focus (dots.focus_window:
         # raised over other floating windows too, as a focus alone leaves it under them). Its process there but no

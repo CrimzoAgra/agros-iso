@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # calamares-online.sh's splash, with the desktop's tools stubbed: opened drawn on the CPU (from the session's autostart
 # it has no LIBGL_ALWAYS_SOFTWARE, and on VMware's GPU its window was refused: never seen), saying what it waits for,
-# and closed when the installer can't be set up. Started again while it gets ready: no second one
+# and closed when the installer can't be set up. Started again while it gets ready: no second one. No XDG_RUNTIME_DIR:
+# no splash, nothing in /tmp
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -22,10 +23,12 @@ printf '#!/bin/sh\nexit 1\n' >"$t/bin/hyprctl"
 printf '#!/bin/sh\nfor i in 1 2 3 4 5 6 7 8 9 10; do [ -e "$T/qs.env" ] && break; sleep 0.5; done\nexit 1\n' >"$t/bin/sudo"
 chmod +x "$t/bin/"*
 # (no session bus: its notification goes nowhere, not to the desktop running the tests)
-run() {
-    T=$t PATH=$t/bin:$PATH XDG_RUNTIME_DIR=$t/run DBUS_SESSION_BUS_ADDRESS=unix:path=$t/nobus \
-        bash "$script" >"$t/out" 2>&1
-}
+mkdir "$t/home"
+# run [no-runtime-dir]: XDG_RUNTIME_DIR is $t/run, or unset
+run() { (
+    if [[ ${1-} == no-runtime-dir ]]; then unset XDG_RUNTIME_DIR; else export XDG_RUNTIME_DIR=$t/run; fi
+    T=$t PATH=$t/bin:$PATH HOME=$t/home DBUS_SESSION_BUS_ADDRESS=unix:path=$t/nobus bash "$script" >"$t/out" 2>&1
+) }
 
 rc=0
 run || rc=$?
@@ -40,11 +43,21 @@ for _ in {1..20}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
 
 # Started again while the first gets ready (its lock held): it stops, no second splash
 rm -f "$t/qs.env" "$t/qs.pid"
-flock "$t/run/calamares-online.lock" sleep 3 &
+flock "$t/run/.calamares-online.lock" sleep 3 &
 sleep 0.5
 rc=0
 run || rc=$?
 wait
 [[ $rc == 0 ]] || fail "a second start while it gets ready failed (status $rc): $(cat "$t/out")"
 [[ ! -e $t/qs.env ]] || fail "a second start opened a second splash"
+
+# No XDG_RUNTIME_DIR: no splash, and nothing in the shared /tmp (another account could plant or watch a fixed name
+# there); its lock in the user's home instead
+[[ -e /tmp/agros-installer-splash ]] && planted=1 || planted=0
+rc=0
+run no-runtime-dir || rc=$?
+[[ $rc == 1 ]] || fail "with no XDG_RUNTIME_DIR, the keyring step failing didn't stop it (status $rc): $(cat "$t/out")"
+[[ ! -e $t/qs.env ]] || fail "a splash opened with no XDG_RUNTIME_DIR"
+((planted)) || [[ ! -e /tmp/agros-installer-splash ]] || fail "the splash's file written in /tmp"
+[[ -e $t/home/.calamares-online.lock ]] || fail "with no XDG_RUNTIME_DIR, the lock isn't in the home"
 echo "ok installer-splash"

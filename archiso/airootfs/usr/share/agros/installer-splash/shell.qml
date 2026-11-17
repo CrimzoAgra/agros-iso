@@ -18,7 +18,8 @@ ShellRoot {
         color: "#14131b"
 
         FileView {
-            path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/agros-installer-splash"
+            // (no XDG_RUNTIME_DIR: nothing read, as calamares-online.sh opens no splash then; never a name in the shared /tmp)
+            path: Quickshell.env("XDG_RUNTIME_DIR") ? Quickshell.env("XDG_RUNTIME_DIR") + "/agros-installer-splash" : ""
             watchChanges: true
             onFileChanged: reload()
             onLoaded: {
