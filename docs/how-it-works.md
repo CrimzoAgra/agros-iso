@@ -215,11 +215,13 @@ The AgrOS ones in `archiso/airootfs/`:
 1. Already running (a lock in `$XDG_RUNTIME_DIR`, held until the installer closes), it doesn't start a second one: its
    window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
    process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
-   forward, or a new one started); still getting ready, what it's waiting for is said again.
-2. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
+   forward, or a new one started); still getting ready, its splash is up already.
+2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
+   Quickshell: the logo, a spinner and what it's waiting for, from a status file it writes), closed once the
+   installer's window is up or when it stops. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
    login, it says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
    minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
-   Once online, says "Getting the installer ready" (its window takes a minute or two).
+   The splash says so too, and once online "Getting the installer ready" (its window takes a minute or two).
    Syncs the clock and waits for it (up to 30 seconds), since a keyring "created in the future" breaks the install.
    Waits for the ISO's `pacman-init.service` (the keyring it makes at boot), then makes a new pacman keyring and
    populates the `archlinux`, `cachyos` and `agros` keys, then installs the latest `archlinux-keyring` and

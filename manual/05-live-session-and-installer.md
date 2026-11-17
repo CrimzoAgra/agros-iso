@@ -35,7 +35,7 @@ It's cut down to what installing needs:
 
 ## The installer
 
-The installer opens by itself when the live session starts: "Getting the installer ready" says it's on its way (it
+The installer opens by itself when the live session starts: a splash with the AgrOS logo shows while it gets ready (it
 takes a minute or two). If you close it, open it again with **Install AgrOS** in the Super menu; while it's open, that
 brings its window forward.
 

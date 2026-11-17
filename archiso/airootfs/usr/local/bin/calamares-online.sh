@@ -3,11 +3,22 @@
 # AgrOS: notifications through agros-scripts' notify-when-up, in the background: at login the notification server
 # (Caelestia, no D-Bus activation) may not be up yet, and it tries again for up to a minute. (9>&-: not holding the lock)
 notify() { /usr/lib/agros/bin/notify-when-up "$@" >/dev/null 2>&1 9>&- & }
-# AgrOS: online as the install needs it (NetworkManager's own check: full connectivity), and the two notices said
-# while it gets ready (offline: what to do; online: that it's coming, as nothing shows until its window opens)
+# AgrOS: online as the install needs it (NetworkManager's own check: full connectivity); offline, what to do said
 online() { [[ $(nmcli networking connectivity check 2>/dev/null) == full ]]; }
 notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet to install" "The installer opens once you're connected."; }
-notify_getting_ready() { notify -a AgrOS -i agros-logo "Getting the installer ready"; }
+# AgrOS: a splash while it gets ready (online, the clock, the package keys: a minute or two before its window opens,
+# where nothing showed), its line of text from the status file; closed once the installer's window is up, or when this
+# stops (the installer not set up: said in a notification)
+splash_file=${XDG_RUNTIME_DIR:-/tmp}/agros-installer-splash
+splash() { printf '%s\n' "$1" >"$splash_file"; }
+splash_open() {
+    splash "$1"
+    qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&- &
+    splash_pid=$!
+    trap 'kill "$splash_pid" 2>/dev/null' EXIT
+}
+# The installer's window up (Hyprland's list of windows)
+shown() { hyprctl -j clients 2>/dev/null | jq -e 'any(.[]; .class == "io.calamares.calamares")' >/dev/null; }
 
 # AgrOS: the installer not started, said in a notification (its one way of failing, before anything touched the disks)
 not_set_up() {
@@ -24,7 +35,6 @@ main() {
         # raised over other floating windows too, as a focus alone leaves it under them). Its process there but no
         # window yet, opening or closing: waited for, up to 30 s, its window (brought forward) or its end (a new one
         # started, as asked). Still getting ready: what it waits for said again, as nothing shows until its window opens)
-        shown() { hyprctl -j clients 2>/dev/null | jq -e 'any(.[]; .class == "io.calamares.calamares")' >/dev/null; }
         forward() {
             hyprctl eval 'local w = hl.get_window("class:io.calamares.calamares"); if w and dots and dots.focus_window then dots.focus_window(w.address) end' >/dev/null 2>&1
         }
@@ -36,16 +46,20 @@ main() {
                 if shown; then forward; exit 0; fi
                 flock -n 9 && break
             done
-            # (30 s and still no window, nor its end: a slow machine; said, rather than nothing)
-            flock -n 9 || { notify_getting_ready; exit 0; }
+            # (30 s and still no window, nor its end: a slow machine; its splash is up)
+            flock -n 9 || exit 0
         elif ! online; then
             notify_offline
             exit 0
         else
-            notify_getting_ready
+            # (getting ready: its splash is up)
             exit 0
         fi
     fi
+    # AgrOS: the desktop first: the splash and the installer wait for Caelestia's bar to be up (its IPC answering; up to
+    # 20 s), not on a bare screen before it
+    for _ in {1..100}; do qs ipc -c caelestia show >/dev/null 2>&1 && break; sleep 0.2; done
+    if online; then splash_open "Getting the installer ready…"; else splash_open "Connect to the internet to install: the installer opens once you're connected (Wi-Fi in the bar)."; fi
     # Online first: it opens at login, before a Wi-Fi user could connect, and the clock and keys below come from the
     # internet. Not connected: said once, then checked every 2 s for up to 5 minutes (the keyring step below fails
     # only after that, with its own notification)
@@ -59,7 +73,7 @@ main() {
     # AgrOS: up to a minute or two of setup (the clock, the package keys) before its window opens: said, or it looked
     # like it never started (once connected: offline, the two came at once; still offline after the wait, the keyring
     # step's own notification says it couldn't be set up)
-    online && notify_getting_ready
+    online && splash "Getting the installer ready…"
 
     # The clock synced first (bounded: no NTP server reached in 30 s, it goes on): with a wrong clock the keys read as
     # "created in the future", and the keyring checks below fail
@@ -123,9 +137,8 @@ EOF
         why=$(grep '^AgrOS:' "$log" | tail -1)
         not_set_up "${why:-The AgrOS settings for the installer did not apply}." "Details: $log"
     fi
-    # AgrOS: the desktop first: its window waits for Caelestia's bar to be up (its IPC answering; up to 20 s), not on a
-    # bare screen before it, the bar then coming up around it
-    for _ in {1..100}; do qs ipc -c caelestia show >/dev/null 2>&1 && break; sleep 0.2; done
+    # (the splash closed once its window is up: up to 2 minutes looked for)
+    { for _ in {1..240}; do shown && break; sleep 0.5; done; kill "$splash_pid" 2>/dev/null; } 9>&- &
     # (not exec: pkexec closes the lock, and this keeps it while the installer is open)
     pkexec-wrapper calamares -D6 >> "$log"
 }
