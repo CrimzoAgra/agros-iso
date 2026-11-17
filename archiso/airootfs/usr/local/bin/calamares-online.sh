@@ -11,9 +11,12 @@ notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet 
 # stops (the installer not set up: said in a notification)
 splash_file=${XDG_RUNTIME_DIR:-/tmp}/agros-installer-splash
 splash() { printf '%s\n' "$1" >"$splash_file"; }
+# (drawn on the CPU: started at login, from the session's autostart (a systemd unit), it lacks the
+# LIBGL_ALWAYS_SOFTWARE the desktop sets in Hyprland's own environment on VMware's GPU, so Hyprland refused its
+# GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU on any machine)
 splash_open() {
     splash "$1"
-    qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&- &
+    LIBGL_ALWAYS_SOFTWARE=1 qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&- &
     splash_pid=$!
     trap 'kill "$splash_pid" 2>/dev/null' EXIT
 }
