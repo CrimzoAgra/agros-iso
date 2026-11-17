@@ -31,13 +31,14 @@ not_set_up() {
 
 main() {
     # AgrOS: one at a time. Started again (from the menu, while the one the session opened is still starting or open),
-    # it just stops: two reset the keyring under each other. The lock is held until the installer closes
+    # it starts no second one (two reset the keyring under each other): it brings the open installer forward, waits for
+    # its window, or (offline) says again to connect. The lock is held until the installer closes
     exec 9>"${XDG_RUNTIME_DIR:-/tmp}/calamares-online.lock"
     if ! flock -n 9; then
         # (open: brought forward, from whichever workspace it's on, by the desktop's own focus (dots.focus_window:
         # raised over other floating windows too, as a focus alone leaves it under them). Its process there but no
         # window yet, opening or closing: waited for, up to 30 s, its window (brought forward) or its end (a new one
-        # started, as asked). Still getting ready: what it waits for said again, as nothing shows until its window opens)
+        # started, as asked). Still getting ready: offline, what to do said again; else its splash already says it)
         forward() {
             hyprctl eval 'local w = hl.get_window("class:io.calamares.calamares"); if w and dots and dots.focus_window then dots.focus_window(w.address) end' >/dev/null 2>&1
         }
