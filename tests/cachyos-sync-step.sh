@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# cachyos-sync.yml's last step, which picks what the sync does from the check's and the tests' results: merged when the
+# ISO built and the tests passed; a pull request otherwise, saying why: the tests, a wait for AgrOS's check (the ISO job
+# ran and its gate held it), or the ISO not built (it failed, or its job never ran: not a wait). The step's own commands,
+# read from the workflow, with the sync's script stubbed
+set -euo pipefail
+# shellcheck source=lib.sh source-path=SCRIPTDIR
+. "$(dirname "$0")/lib.sh"
+# (the merge job's run block, the workflow's last, as GitHub runs it: its indentation taken off)
+awk '/^      - name: Into main, or a pull request$/ { job = 1 } job && /^        run: \|$/ { on = 1; next }
+    on { sub(/^          /, ""); print }' "$here/.github/workflows/cachyos-sync.yml" | tr -d '\r' >"$t/step.sh"
+grep -q 'cachyos-sync.sh merge' "$t/step.sh" || fail "the merge step's commands not found in cachyos-sync.yml"
+mkdir -p "$t/w/.github"
+printf '#!/bin/sh\necho "$*"\n' >"$t/w/.github/cachyos-sync.sh"
+chmod +x "$t/w/.github/cachyos-sync.sh"
+# step <tests> <check> <built>: what the step had the sync do
+step() { (cd "$t/w" && TESTS=$1 CHECK=$2 BUILT=$3 CANDIDATE=abc RUN_URL=url bash "$t/step.sh"); }
+
+[[ $(step success success true) == "merge abc" ]] || fail "built and tested: not merged ($(step success success true))"
+[[ $(step failure success true) == "pr its tests fail (url)" ]] || fail "tests failing: $(step failure success true)"
+[[ $(step success success false) == "pr its ISO waits for AgrOS's check"* ]] ||
+    fail "held by the gate: not said as a wait ($(step success success false))"
+[[ $(step success success "") == "pr its ISO wasn't built (url)" ]] ||
+    fail "the ISO job skipped: said as $(step success success "")"
+[[ $(step success failure "") == "pr its ISO wasn't built (url)" ]] ||
+    fail "the ISO failed: said as $(step success failure "")"
+echo "ok cachyos-sync-step"

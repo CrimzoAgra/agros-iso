@@ -23,7 +23,7 @@ in, lives in the [agros](https://github.com/CrimzoAgra/agros) repo; this one onl
 | `agros.asc` | AgrOS's public signing key (packages and ISOs), for checking a downloaded ISO's `.sig` |
 | `.github/workflows/iso.yml` | GitHub publishes a new ISO after each change: a push of `main` (not one of only docs), or AgrOS's packages changed (agros's CI starts it after publishing them); three jobs: `sourceforge` checks SourceForge's key; `iso` builds with no secrets (it runs packages' install scripts as root; `AGROS_SIGN_LATER` leaves signing to the next job); `publish` signs and uploads (to SourceForge, and to Cloudflare R2 as `agros-latest.iso`, the README's download), running only official Arch packages' scripts (the key kept from the build's, not the ISO checked: it's signed as built), and, on a re-run, only if no newer run has published since. See [Published by itself](../manual/03-building.md#published-by-itself) |
 | `testiso.sh` | Boots the newest ISO in a VMware Workstation VM (made the first time; `--fresh` for a new empty disk) |
-| `tests/` | `tests/run.sh` (or `tests/run.sh <name>...`): the scripts on throwaway copies, nothing built (`agros-trim.sh` on copies of the profile's menus, package list and `pacman.conf` files in `tests/fixtures/profile`, and on the repo's own `archiso/`; `newest_iso`; the CachyOS sync's `prepare` and `merge` on throwaway repos; `upload-iso.sh` under sudo, a dry run, skipped without `sudo -n`). Run on Linux, after each push of `main` by `.github/workflows/tests.yml`, and by the CachyOS sync on its merge before `main` moves to it (its pushes, with GitHub's token, start no workflow); the ISO workflow doesn't wait for it. A failing `agros-trim` on the repo's own profile in a CachyOS merge: the trim no longer fits their menus (the ISO would keep the LTS kernel), and the merge waits as a pull request |
+| `tests/` | `tests/run.sh` (or `tests/run.sh <name>...`): the scripts on throwaway copies, nothing built (`agros-trim.sh` on copies of the profile's menus, package list and `pacman.conf` files in `tests/fixtures/profile`, and on the repo's own `archiso/`; `newest_iso`; the CachyOS sync's `prepare` and `merge` on throwaway repos, and the choice its workflow's last step makes; `upload-iso.sh` under sudo, a dry run, skipped without `sudo -n`). Run on Linux, after each push of `main` by `.github/workflows/tests.yml`, and by the CachyOS sync on its merge before `main` moves to it (its pushes, with GitHub's token, start no workflow); the ISO workflow doesn't wait for it. A failing `agros-trim` on the repo's own profile in a CachyOS merge: the trim no longer fits their menus (the ISO would keep the LTS kernel), and the merge waits as a pull request |
 | `archiso/profiledef.sh` | The profile: ISO name `agros`, label `AGROS_YYYYMM`, boot modes `bios.syslinux` and `uefi.grub`, squashfs with zstd (level 19), file permissions |
 | `archiso/packages_desktop.x86_64` | The live system's packages (copied to `packages.x86_64` in the build's copy of the profile) |
 | `archiso/pacman.conf` | The repos the live system is built from, `[agros]` included |
@@ -273,17 +273,22 @@ as the partition names, from the palette and not the stylesheet.
   config into place and enables greetd (CachyOS's installer enables greetd only for its `noctalia-greeter`, so without
   this AgrOS would boot to a text login). Added where CachyOS's settings don't have it (the `cachyos` branch), before
   the btrfs snapshot whichever module takes it (a `shellprocess` script, or `gucc`, CachyOS's installer's own code, on
-  their newer branches), else before the cleanup; one after the snapshot (it would delete it) fails.
+  their newer branches), else before the cleanup; one after the snapshot (it would delete it) fails. It has an hour,
+  as CachyOS's own steps have (both kernels' initramfs rebuilt, other systems looked for on every disk): cut off, it
+  would fail the whole install at its end.
 - `shellprocess_agrossnapshot.conf` (right after CachyOS's btrfs snapshot step, in the new system): names the
   installation's snapshot "Fresh AgrOS Installation" (`snapper modify`: `gucc` names it in C++, so not in a script of
   theirs) and remakes GRUB's menu, so the snapshot is in it from the first boot (grub-btrfsd only adds snapshots taken
-  after it starts). No snapshot step: said, and not added. Each of its failures said, never the install's.
+  after it starts). No snapshot step: said, and not added. No snapshot described "Fresh ... Installation" (CachyOS
+  named it otherwise): said, none renamed. Each of its failures said, never the install's.
   Its command, as the greetd step's, has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
   variable (one it doesn't know stops the whole install), turns `$$` into `\$`, and tracks quotes without knowing
   shell comments. `agros-calamares-config` refuses to start the installer with one, and `buildiso.sh` refuses to build
   an ISO with one (`check_calamares_commands` in `util.sh`).
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
-  `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
+  `agros-${cpu}` as the suggested computer name and no "Log in automatically" box (`users.conf`, `displayAutologin`
+  and `doAutologin` false: greetd's login screen isn't one the installer's display manager step sets up, so it would
+  do nothing); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
   firmware's boot entry and GRUB's folder `EFI/AgrOS`.
 - The room AgrOS needs, 20 GB (`welcome_online.conf`'s `requiredStorage`, CachyOS's 8): the welcome page checks it,
   and the partition page leaves at least that plus 2.1 GB for the new system beside Windows (plus 0.5 GB in place of
