@@ -47,7 +47,8 @@ The AgrOS ones in `archiso/airootfs/`:
 | `usr/local/bin/calamares-online.sh` | Starts the installer (below) |
 | `usr/local/bin/agros-calamares-config` | AgrOS's installer settings (below) |
 | `usr/local/bin/agros-gate-install` | The installer's upstream gate step (below) |
-| `usr/local/bin/live-session-menu` | Sets Caelestia's `launcher.hiddenApps` in the live user's `shell.json` to hide every app but `agros-install`, `foot`, `thunar`, `librewolf` and `gparted`, and `launcher.favouriteApps` to none, through agros-scripts' `json-edit` (the file's other writers' lock; one Caelestia is mid-rewrite is tried again, never reset) |
+| `usr/local/bin/live-session-menu` | Sets Caelestia's `launcher.hiddenApps` in the live user's `shell.json` to hide every app but `agros-install`, `foot`, `thunar`, `librewolf` and `gparted`, and `launcher.favouriteApps` to none, and keeps only the screen-off idle timeouts in `general.idle.timeouts` (the installed system's suspend after 30 minutes, 15 on battery, put the computer to sleep halfway through a long install no one touched; set to that list, never removed, or Caelestia takes its own: a lock and a suspend), through agros-scripts' `json-edit` (the file's other writers' lock; one Caelestia is mid-rewrite is tried again, never reset) |
+| `etc/systemd/sleep.conf.d/do-not-suspend.conf` | The live system never sleeps, whoever asks (`AllowSuspend=no` and the hibernate kinds): the installer runs on its own D-Bus, so its inhibitor reaches no one, and the live user's polkit rule lets a suspend past one anyway. `logind.conf.d/do-not-suspend.conf` ignores the sleep keys and the lid. The install copies neither to the new system |
 | `usr/local/bin/pkexec-wrapper` | Runs the installer as root under Hyprland (below) |
 | `etc/pacman.d/hooks/agros-live-rate-mirrors-off.hook` | Turns `cachyos-rate-mirrors.timer` off on the live system once its package has enabled it (only for the build: removed afterwards, as CachyOS's build-time hooks are) |
 | `etc/pacman.d/hooks/zz-agros-live-branding.hook`, `agros-live-branding` | Puts AgrOS's name back in `/etc/os-release` and `/etc/lsb-release` after CachyOS's hooks have written CachyOS's there, as `agros-system`'s `agros-branding` does on the installed system (only for the build, removed afterwards) |
@@ -325,6 +326,12 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
   makes its own 100 MB, and **Install alongside** and **Replace a partition** stayed greyed out ("too small"); GRUB needs
   a few MB there, the kernels being on the system's partition. agros's rebuild of the installer checks this minimum on
   the install-type page (CachyOS's checks the 512 MB).
+- Beside Windows, the firmware's fallback loader (`EFI/Boot/bootx64.efi`, Windows' copy of its boot manager) is
+  kept: CachyOS's `bootloader.conf` has `installEFIFallback: true`, and the `bootloader` step (its `main.py`) copied
+  GRUB over it. A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a
+  reset), then came to AgrOS instead, or with Secure Boot on maybe to nothing (GRUB's copy isn't signed). The copy is
+  made only when there's no `EFI/Microsoft/Boot/bootmgfw.efi` on the boot partition, so a disk with AgrOS alone still
+  gets it. Not patched (CachyOS changed the step): said, and the installer starts as before.
 
 ### The branding
 

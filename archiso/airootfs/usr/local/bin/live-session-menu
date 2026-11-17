@@ -5,7 +5,12 @@
 # has, which it follows as it changes. Through agros-scripts' json-edit, as every writer of that file: under its lock,
 # made when missing, tried again while Caelestia is halfway through rewriting it (never started again from {}). Run
 # when the live session starts (its autostart entry)
+# And no idle timeout but the screen going off: the installed system's suspend (after 30 minutes, 15 on battery) put
+# the computer to sleep halfway through a long install no one touched, after the disk was partitioned (the installer
+# runs on its own bus: its inhibitor reaches no one, and the live user's polkit rule lets a suspend past one anyway).
+# Set to that list, never removed: with no timeouts key Caelestia takes its own (a lock, then a suspend)
 f=$HOME/.config/caelestia/shell.json
 mkdir -p "${f%/*}"
 exec /usr/lib/agros/bin/json-edit "$f" --indent 4 \
-    '.launcher.hiddenApps = ["^(?!(agros-install|foot|thunar|librewolf|gparted)$).*$"] | .launcher.favouriteApps = []'
+    '.launcher.hiddenApps = ["^(?!(agros-install|foot|thunar|librewolf|gparted)$).*$"] | .launcher.favouriteApps = [] |
+    .general.idle.timeouts = [(.general.idle.timeouts // [])[] | select(.idleAction == "dpms off")]'

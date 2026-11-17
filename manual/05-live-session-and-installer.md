@@ -32,6 +32,8 @@ It's cut down to what installing needs:
   browser (LibreWolf) and the partition editor (GParted).
 - The dock has no pinned apps. The installer's window shows in it with AgrOS's logo.
 - The big apps of `agros-desktop` aren't on the ISO. They're only installed on the new system.
+- It never sleeps, so a long install can't stop halfway: the screen still goes off when idle (any key brings it
+  back), but there's no suspend, from the idle timer, the lid or the session menu.
 
 ## The installer
 
@@ -50,7 +52,8 @@ It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 - It installs GRUB, with no page to pick another boot loader: AgrOS's boot menu, its look and the snapshots in it
   are GRUB's.
 - It needs 20 GB for AgrOS. Beside Windows (**Install alongside**, or **Replace a partition** on free space), it uses
-  the EFI partition Windows already has, even Windows' own 100 MB one. Getting Windows ready first (Fast Startup,
+  the EFI partition Windows already has, even Windows' own 100 MB one, and leaves Windows' fallback boot file
+  (`EFI/Boot/bootx64.efi`) as it is. Getting Windows ready first (Fast Startup,
   BitLocker) is in AgrOS's manual:
   [Keeping Windows](https://github.com/CrimzoAgra/agros/blob/main/manual/02-installing.md#keeping-windows).
 - If Hyprland was updated after the ISO was made and AgrOS hasn't checked the new version yet, the new system gets

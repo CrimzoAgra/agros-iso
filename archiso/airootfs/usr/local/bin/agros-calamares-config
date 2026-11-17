@@ -175,6 +175,18 @@ grep -qx 'efiBootLoader: "grub"' "$mods/bootloader.conf" && ! grep -q '^efiBootL
 for f in "$pymods/pacstrap/main.py" "$pymods/grubcfg/main.py"; do
     grep -q 'value("packagechooser_bootloader") or "grub"' "$f" || fail "$f doesn't default to GRUB"
 done
+# Beside Windows, the firmware's fallback loader (EFI/Boot/bootx64.efi, Windows' copy of its boot manager) kept:
+# CachyOS's bootloader.conf has GRUB copied over it (installEFIFallback, for the rare firmware that boots nothing else).
+# A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a reset), then came
+# to AgrOS (Windows behind Esc in the first second), or with Secure Boot on maybe to nothing (GRUB's copy isn't signed).
+# With no Windows on the boot partition (EFI/Microsoft/Boot/bootmgfw.efi), GRUB's copy as before. Not patched
+# (CachyOS changed the step): said, the install goes on
+bl=$pymods/bootloader/main.py
+win='os.path.exists(os.path.join(install_efi_directory_firmware, "Microsoft", "Boot", "bootmgfw.efi"))'
+sed -i 's|^\( *\)if libcalamares.job.configuration.get(fallback, True):$|\1if libcalamares.job.configuration.get(fallback, True) and not '"$win"':|' \
+    "$bl" 2>/dev/null || true
+grep -q '"Microsoft", "Boot", "bootmgfw.efi"' "$bl" 2>/dev/null ||
+    echo "AgrOS: the firmware's fallback loader left to CachyOS's step (GRUB copied over Windows' own)"
 grep -q '^efiSystemPartition: *"/boot/efi"' "$mods/partition.conf" && grep -q '^efiSystemPartitionSize: *512M' "$mods/partition.conf" &&
     grep -q '^allowZfsEncryption: false' "$mods/partition.conf" ||
     fail "the partition page isn't on GRUB's boot partition ($mods/partition.conf)"
