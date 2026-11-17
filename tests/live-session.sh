@@ -23,7 +23,9 @@ cat >"$f" <<'JSON'
   {"enabled": true, "idleAction": ["systemctl", "suspend"], "inhibitWhenCharging": false, "timeout": 1800},
   {"enabled": true, "idleAction": "dpms off", "inhibitWhenCharging": true, "returnAction": "dpms on", "timeout": 300},
   {"enabled": true, "idleAction": ["systemctl", "suspend"], "inhibitWhenCharging": true, "timeout": 900},
-  {"idleAction": "lock", "timeout": 180}]}}}
+  {"idleAction": "lock", "timeout": 180}]}},
+ "launcher": {"actions": [{"command": ["suspendThenHibernate"], "enabled": true, "name": "Sleep"},
+  {"command": ["loginctl", "lock-session"], "enabled": true, "name": "Lock"}]}}
 JSON
 run
 run
@@ -32,12 +34,16 @@ run
 [[ $(jq -c '[.general.logo, .general.idle.inhibitWhenAudio, .launcher.favouriteApps]' "$f") == \
     '["agros-logo",true,[]]' ]] ||
     fail "the file's other settings not kept, or the dock's pins left: $(cat "$f")"
+[[ $(jq -c '[.launcher.actions[] | [.name, .enabled]]' "$f") == '[["Sleep",false],["Lock",true]]' ]] ||
+    fail "the launcher's Sleep left on, or another action changed: $(cat "$f")"
 jq -e '.launcher.hiddenApps | length == 1 and (.[0] | contains("agros-install"))' "$f" >/dev/null ||
     fail "the Super menu not cut down: $(cat "$f")"
 # No timeouts key, or no file: an empty list, not Caelestia's own
 echo '{"general": {"idle": {"lockBeforeSleep": true}}}' >"$f"
 run
 [[ $(jq -c '.general.idle.timeouts' "$f") == '[]' ]] || fail "no timeouts key left without an empty list: $(cat "$f")"
+jq -e '.launcher | has("actions") | not' "$f" >/dev/null ||
+    fail "launcher actions made where there were none (Caelestia's own lost): $(cat "$f")"
 rm -f "$f"
 run
 [[ $(jq -c '.general.idle.timeouts' "$f") == '[]' ]] || fail "no file left without an empty list: $(cat "$f")"

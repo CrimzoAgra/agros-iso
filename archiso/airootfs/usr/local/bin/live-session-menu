@@ -8,9 +8,12 @@
 # And no idle timeout but the screen going off: the installed system's suspend (after 30 minutes, 15 on battery) put
 # the computer to sleep halfway through a long install no one touched, after the disk was partitioned (the installer
 # runs on its own bus: its inhibitor reaches no one, and the live user's polkit rule lets a suspend past one anyway).
-# Set to that list, never removed: with no timeouts key Caelestia takes its own (a lock, then a suspend)
+# Set to that list, never removed: with no timeouts key Caelestia takes its own (a lock, then a suspend). The
+# launcher's Sleep turned off too: the live system refuses every sleep (sleep.conf.d), so it did nothing
 f=$HOME/.config/caelestia/shell.json
 mkdir -p "${f%/*}"
 exec /usr/lib/agros/bin/json-edit "$f" --indent 4 \
     '.launcher.hiddenApps = ["^(?!(agros-install|foot|thunar|librewolf|gparted)$).*$"] | .launcher.favouriteApps = [] |
-    .general.idle.timeouts = [(.general.idle.timeouts // [])[] | select(.idleAction == "dpms off")]'
+    .general.idle.timeouts = [(.general.idle.timeouts // [])[] | select(.idleAction == "dpms off")] |
+    if .launcher.actions then .launcher.actions |= map(if .command == ["suspendThenHibernate"] then .enabled = false
+        else . end) else . end'
