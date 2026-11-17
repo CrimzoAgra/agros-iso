@@ -201,8 +201,9 @@ The AgrOS ones in `archiso/airootfs/`:
   `.automated_script.sh`, archiso's `script=` boot option runner, and the `autologin` group: greetd logs the live user
   in); the KWin keyboard-layout hook (`90-cachyos-live-kwin-keyboard.hook`, for Plasma's `cachyos-kde-settings`);
   `usr/local/share/livecd-sound`; `etc-pacman.d-gnupg.mount` (nothing used it: the ISO's `pacman-init.service` doesn't
-  require it); `bootstrap_packages.x86_64` (only for archiso's bootstrap build mode, not `iso`); and the `linux-atm`
-  package (ADSL modems' ATM tools).
+  require it); `bootstrap_packages.x86_64` (only for archiso's bootstrap build mode, not `iso`); the `linux-atm`
+  package (ADSL modems' ATM tools); and archiso's SSH server, started at boot and taking root's password login
+  (`sshd.service` enabled, `etc/ssh/sshd_config.d/10-archiso.conf`).
 - The ISO is named `agros`, and its console welcome (`util-iso.sh`'s motd) is AgrOS's.
 - The build: `-f`, `-a`, `-u` (upload to SourceForge), the low priority and half-CPU default, the per-ISO checksums and
   signature with AgrOS's key, only git's tracked files of the profile, and no "unknown error" after a good build.
