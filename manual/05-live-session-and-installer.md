@@ -32,6 +32,8 @@ It's cut down to what installing needs:
   browser (LibreWolf) and the partition editor (GParted).
 - The dock has no pinned apps. The installer's window shows in it with AgrOS's logo.
 - The big apps of `agros-desktop` aren't on the ISO. They're only installed on the new system.
+- It never sleeps, so a long install can't stop halfway: the screen still goes off when idle (any key brings it
+  back), but there's no suspend, from the idle timer, the lid or the session menu.
 
 ## The installer
 
