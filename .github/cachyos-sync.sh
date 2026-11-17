@@ -10,13 +10,20 @@
 #                                  instead), the ISO started, the open pull request closed
 #   cachyos-sync.sh pr <why>       the pull request from "cachyos" opened or brought up to date: their commits, the
 #                                  files they change, those that conflict, and why it wasn't merged by itself
-# Writes new=, candidate= and why= to $GITHUB_OUTPUT (or stdout). CACHYOS_URL: another CachyOS repo (the test's)
+# Writes new=, candidate= and why= to $GITHUB_OUTPUT (or stdout). CACHYOS_URL: another CachyOS repo (the test's).
+# merge and pr need origin/cachyos (the workflow's checkout fetches every branch)
 set -euo pipefail
 url=${CACHYOS_URL:-https://github.com/CachyOS/CachyOS-Live-ISO.git}
 out=${GITHUB_OUTPUT:-/dev/stdout}
 list=archiso/packages_desktop.x86_64
-git fetch -q "$url" master
-theirs=$(git rev-parse FETCH_HEAD)
+# (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
+# merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
+# and a failed fetch stopped a merge already checked)
+case ${1:-} in
+    prepare) git fetch -q "$url" master; theirs=$(git rev-parse FETCH_HEAD) ;;
+    merge | pr) theirs=$(git rev-parse origin/cachyos) ;;
+    *) echo "usage: cachyos-sync.sh prepare | merge <commit> | pr <why>" >&2; exit 2 ;;
+esac
 new=$(git rev-list --count "origin/main..$theirs")
 # pkgs <commit>: its ISO's package list, one per line
 pkgs() { git show "$1:$list" 2>/dev/null | sed 's/#.*//; s/[[:space:]]//g; /^$/d' | sort -u; }
@@ -113,5 +120,4 @@ case ${1:-} in
         fi
         ;;
     pr) pr "${2:?usage: cachyos-sync.sh pr <why>}" ;;
-    *) echo "usage: cachyos-sync.sh prepare | merge <commit> | pr <why>" >&2; exit 2 ;;
 esac
