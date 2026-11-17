@@ -13,7 +13,7 @@ cat >"$t/bin/qs" <<'EOF'
 #!/bin/sh
 [ "$1" = -p ] || exit 0
 echo $$ >"$T/qs.pid"
-echo "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE-}" >"$T/qs.env"
+echo "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE-} QS_APP_ID=${QS_APP_ID-}" >"$T/qs.env"
 exec sleep 30
 EOF
 printf '#!/bin/sh\necho full\n' >"$t/bin/nmcli"
@@ -34,7 +34,10 @@ rc=0
 run || rc=$?
 [[ $rc == 1 ]] || fail "the keyring step failing didn't stop it (status $rc): $(cat "$t/out")"
 [[ -s $t/qs.env ]] || fail "no splash opened"
-grep -qx 'LIBGL_ALWAYS_SOFTWARE=1' "$t/qs.env" || fail "the splash isn't drawn on the CPU: $(cat "$t/qs.env")"
+grep -q 'LIBGL_ALWAYS_SOFTWARE=1 ' "$t/qs.env" || fail "the splash isn't drawn on the CPU: $(cat "$t/qs.env")"
+# (named after the installer's launcher entry: the dock shows its icon, not Quickshell's default one)
+grep -q ' QS_APP_ID=agros-install$' "$t/qs.env" && [[ -f $here/archiso/airootfs/usr/share/applications/agros-install.desktop ]] ||
+    fail "the splash not named after the installer's launcher entry: $(cat "$t/qs.env")"
 [[ $(cat "$t/run/agros-installer-splash") == "Getting the installer ready…" ]] ||
     fail "the splash says: $(cat "$t/run/agros-installer-splash")"
 pid=$(cat "$t/qs.pid")

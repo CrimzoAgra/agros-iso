@@ -13,7 +13,8 @@ notify_offline() { notify -a AgrOS -i network-wireless "Connect to the internet 
 splash_file=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/agros-installer-splash}
 splash() { [[ -z $splash_file ]] || printf '%s\n' "$1" >"$splash_file"; }
 # (drawn on the CPU, set here on any machine rather than left to the desktop's VMware fallback: on VMware's GPU without
-# the shim, Hyprland refuses a GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU)
+# the shim, Hyprland refuses a GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU).
+# Named after the installer's launcher entry (QS_APP_ID): the dock shows its icon, not Quickshell's default one
 # splash_show: the splash opened, unless one is up. The splash itself holds its lock (taken before it starts, so two
 # starts at once can't both open one), and its pid is in a file: a second start of this reopens one the user closed,
 # and the first run closes whichever is up
@@ -22,7 +23,7 @@ splash_show() {
     (
         flock -n 8 || exit 0
         echo "$BASHPID" >"$splash_file.pid"
-        LIBGL_ALWAYS_SOFTWARE=1 exec qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&-
+        LIBGL_ALWAYS_SOFTWARE=1 QS_APP_ID=agros-install exec qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&-
     ) 8>"$splash_file.lock" &
 }
 # (a pid only killed while the lock is held: one the user closed left a stale pid, which may be another process's now)
