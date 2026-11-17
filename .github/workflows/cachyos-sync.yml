@@ -2,8 +2,9 @@ name: CachyOS sync
 
 # CachyOS's ISO repo, what this one is based on, followed each day (.github/cachyos-sync.sh): their new commits merged
 # into main by themselves when the merge has no conflicts, keeps what AgrOS changed on purpose (none of the packages it
-# left out back, no KDE ones, its own installer) and its ISO builds; then the ISO is published as after any push. Else
-# a pull request from the branch "cachyos" (their master as it is) says what they change and why it wasn't merged.
+# left out back, no KDE ones, its own installer), its ISO builds and its tests pass; then the ISO is published as after
+# any push. Else a pull request from the branch "cachyos" (their master as it is) says what they change and why it
+# wasn't merged.
 # (needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests")
 on:
   schedule:
@@ -42,8 +43,19 @@ jobs:
       ref: ${{ needs.prepare.outputs.candidate }}
       check: true
 
+  # And its tests (tests.yml): CachyOS's changes to the menus or files AgrOS's scripts read (agros-trim.sh's LTS kernel,
+  # the installer's settings) found before main has them. Its own job, with no token that can write: their code runs
+  tests:
+    needs: prepare
+    if: needs.prepare.outputs.candidate != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ needs.prepare.outputs.candidate }}
+
   merge:
-    needs: [prepare, check]
+    needs: [prepare, check, tests]
     if: ${{ always() && needs.prepare.outputs.candidate != '' }}
     runs-on: ubuntu-26.04
     steps:
@@ -55,10 +67,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHECK: ${{ needs.check.result }}
           BUILT: ${{ needs.check.outputs.built }}
+          TESTS: ${{ needs.tests.result }}
           CANDIDATE: ${{ needs.prepare.outputs.candidate }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "$CHECK" = success ] && [ "$BUILT" = true ]; then
+          if [ "$TESTS" != success ]; then
+            .github/cachyos-sync.sh pr "its tests fail ($RUN_URL)"
+          elif [ "$CHECK" = success ] && [ "$BUILT" = true ]; then
             .github/cachyos-sync.sh merge "$CANDIDATE"
           elif [ "$CHECK" = success ]; then
             .github/cachyos-sync.sh pr "its ISO waits for AgrOS's check of a new Hyprland (tried again tomorrow)"

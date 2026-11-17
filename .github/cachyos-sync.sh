@@ -4,7 +4,8 @@
 #   cachyos-sync.sh prepare        their master fetched and pushed as the branch "cachyos". Nothing new: new=0. A merge
 #                                  with no conflicts that keeps what AgrOS changed on purpose (none of the packages it
 #                                  left out back, none of KDE's, its own installer): made, pushed as "cachyos-merge",
-#                                  candidate=<its commit> (the workflow builds its ISO, then merge); else why=<...>
+#                                  candidate=<its commit> (the workflow builds its ISO and runs the tests on
+#                                  it, then merge); else why=<...>
 #   cachyos-sync.sh merge <commit> main moved to that merge (only forward: main moved on since, a pull request
 #                                  instead), the ISO started, the open pull request closed
 #   cachyos-sync.sh pr <why>       the pull request from "cachyos" opened or brought up to date: their commits, the
