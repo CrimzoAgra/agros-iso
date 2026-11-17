@@ -367,7 +367,10 @@ when that's safe:
 1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
    `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
-   `kf6*`, `breeze*`), and AgrOS's own installer (`agros/calamares`) stays.
+   `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes none of the files that run as
+   root or decide what's trusted (the build's scripts, the workflows, keys, `profiledef.sh`, the `pacman.conf` files,
+   and in the live system sudo, polkit, systemd units, SSH, the accounts, root's files, `usr/local/bin` and the
+   installer's settings: `sensitive` in the script): those are looked at first.
 2. That merge's ISO is built (`iso.yml` with `check`: nothing published), and the tests run on it (`tests.yml`, in a
    job of its own with a read-only token: CachyOS's code runs there).
 3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead; a push refused for
