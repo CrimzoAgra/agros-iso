@@ -218,7 +218,9 @@ The AgrOS ones in `archiso/airootfs/`:
    forward, or a new one started); still getting ready, its splash is up already.
 2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
    Quickshell: the logo, a spinner and what it's waiting for, from a status file it writes), closed once the
-   installer's window is up or when it stops. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
+   installer's window is up or when it stops. The splash is drawn on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from
+   the session's autostart, a systemd unit, it doesn't get what the desktop sets in Hyprland's own environment, and on
+   VMware's GPU Hyprland refused its window, so it closed before it was ever seen. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first
    login, it says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
    minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
    The splash says so too, and once online "Getting the installer ready" (its window takes a minute or two).
@@ -238,7 +240,8 @@ without getting the user's `XDG_RUNTIME_DIR` (root's files there would belong to
 Hyprland's has no X authority for root. It sets `QT_QUICK_BACKEND=software`: drawn by the GPU, root's Calamares lost its
 Wayland connection a second after opening (Hyprland: "unknown object, message attach"; seen in VMware). It passes the
 desktop's Qt theme (`QT_QPA_PLATFORMTHEME`, qtengine with the user's colours), because Calamares draws some parts, such
-as the partition names, from the palette and not the stylesheet.
+as the partition names, from the palette and not the stylesheet; qtengine when it's unset, as it is at login (the
+autostart's systemd unit doesn't get Caelestia's Hyprland environment).
 
 ### AgrOS's settings
 
