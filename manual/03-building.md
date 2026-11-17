@@ -84,8 +84,8 @@ gpg --verify agros-desktop-linux-YYMMDD-HHMM.iso.sig agros-desktop-linux-YYMMDD-
 ## Publishing the ISO
 
 `upload-iso.sh` puts an ISO on [SourceForge](https://sourceforge.net), where people can download it, as other distros do
-(GitHub takes at most 2 GB a file; the ISO is about 2.1). Once it's set up, **GitHub publishes a new ISO by itself after
-each change** (below); `upload-iso.sh` also works on its own.
+(GitHub takes at most 2 GB a file, and the ISO, about 1.9 GB, is close to that). Once it's set up, **GitHub publishes
+a new ISO by itself after each change** (below); `upload-iso.sh` also works on its own.
 
 ### Setting it up, once
 

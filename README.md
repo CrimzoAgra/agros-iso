@@ -17,7 +17,7 @@ Read more in [What the ISO is](manual/01-what-it-is.md).
 
 ## Download
 
-**[Download the latest AgrOS ISO](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso)** (about 2.1 GB),
+**[Download the latest AgrOS ISO](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso)** (about 1.9 GB),
 with its [checksum](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso.sha256) and
 [signature](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso.sig). A new one is published by itself
 after each change to what goes into it here (not to the docs alone) or to AgrOS's packages. Every ISO, the latest too,
