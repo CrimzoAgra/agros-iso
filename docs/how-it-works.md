@@ -179,7 +179,8 @@ The AgrOS ones in `archiso/airootfs/`:
   the live user straight into it (`airootfs/etc/greetd/config.toml`, enabled by `util-iso.sh`). CachyOS's Plasma
   login and KDE settings in `etc/skel` are gone. The installer opens when the session starts, and is "Install AgrOS"
   in the app menu. The menu and dock are cut down to what installing needs (`live-session-menu`, the empty
-  `pins.json`).
+  `pins.json`). `gvfs` puts drives and USB sticks in Thunar's side panel, and `ntfsprogs` lets the installer shrink
+  Windows' partition (`tests/installer-tools.sh` checks the tools its partitioning calls are on the ISO).
 - The installer is AgrOS's: its branding (`airootfs/usr/share/calamares/branding/agros`: the name, the logo and name as
   in AgrOS's README, its colours), AgrOS in its steps, the suggested computer name (`agros-...`) and the firmware's
   boot entry (`AgrOS`).
