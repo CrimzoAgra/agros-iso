@@ -165,7 +165,7 @@ The AgrOS ones in `archiso/airootfs/`:
   (`agros`).
 - The network-boot (PXE) menu entries drop `cms_verify=y` (`archiso/syslinux/archiso_pxe-linux.cfg`, the reason in a
   comment there).
-- The live system's installer is AgrOS's rebuild from `[agros]` (`agros/cachyos-calamares-next` in
+- The live system's installer is AgrOS's rebuild from `[agros]` (`agros/calamares` in
   `packages_desktop.x86_64`): CachyOS's own can lag behind an Arch update and not start.
 - The live session is AgrOS's own desktop, not CachyOS's KDE: `packages_desktop.x86_64` has Hyprland, Caelestia and
   AgrOS's settings instead of Plasma (the big apps of `agros-desktop` only go on the installed system), and greetd logs
@@ -306,12 +306,13 @@ listed after it in all three `pacman.conf` files, so pacman goes there only when
 
 - **AgrOS's packages.** The live system gets `agros-keyring`, `agros-scripts`, `agros-hyprland-settings`,
   `agros-welcome` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo (`quickshell-git`,
-  `caelestia-shell`, ...) and the installer, `agros/cachyos-calamares-next` (below). The installed system gets
+  `caelestia-shell`, ...) and the installer, `agros/calamares` (below). The installed system gets
   `agros-desktop` and everything it pulls in.
 - **The installer.** The CI rebuilds CachyOS's `cachyos-calamares` PKGBUILD against today's libraries. CachyOS's own
-  build was made for Boost 1.91 and didn't start once Arch moved to 1.92. The rebuild's `pkgrel` is CachyOS's plus `.5`;
-  the ISO's package list names it `agros/cachyos-calamares-next` (pacman takes a package from the first repo that has
-  it, `[cachyos]`, not the newest), and it carries small fixes for AgrOS's dark theme: the partition names in the
+  build was made for Boost 1.91 and didn't start once Arch moved to 1.92. The rebuild's `pkgrel` is CachyOS's plus a dot
+  and AgrOS's own number; the ISO's package list names it `agros/calamares`: `[agros]`'s (pacman takes a package from
+  the first repo that has it, `[cachyos]`, not the newest), by what it provides, so the ISO has it whatever CachyOS
+  names the package (`cachyos-calamares-next` until 2026-11-17, `cachyos-calamares` since); and it carries small fixes for AgrOS's dark theme: the partition names in the
   theme's text colours, the package list's highlight cleared on a click on no row, and the language list's English names
   readable on the highlighted row; and GRUB only: where its compiled modules read the bootloader page's choice (the ZFS
   pool's GRUB compatibility, the partition page's GRUB settings, its BIOS hint, the boot partition on erase-disk), GRUB,
@@ -329,7 +330,7 @@ when that's safe:
 1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
    `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
-   `kf6*`, `breeze*`), and AgrOS's own installer (`agros/cachyos-calamares-next`) stays.
+   `kf6*`, `breeze*`), and AgrOS's own installer (`agros/calamares`) stays.
 2. That merge's ISO is built (`iso.yml` with `check`: nothing published).
 3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead; a push refused for
    anything else, a rule or the token, fails the run) and the ISO workflow is started, which publishes it as after any

@@ -79,8 +79,8 @@ case ${1:-} in
                 why="it would bring back packages AgrOS left out: $back"
             elif [[ -n $kde ]]; then
                 why="it would add KDE packages: $kde"
-            elif ! grep -qx 'agros/cachyos-calamares-next' <<<"$(pkgs HEAD)"; then
-                why="AgrOS's own installer (agros/cachyos-calamares-next) would leave the package list"
+            elif ! grep -qx 'agros/calamares' <<<"$(pkgs HEAD)"; then
+                why="AgrOS's own installer (agros/calamares) would leave the package list"
             fi
         fi
         if [[ -n $why ]]; then
