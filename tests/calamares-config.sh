@@ -120,4 +120,40 @@ setup ""
 printf '%s\n' '- id: greetd' '  module: shellprocess' '  config: shellprocess_greetd.conf' >>"$s"
 ! out=$(run) || fail "a greetd step after the snapshot not caught: $out"
 grep -q "greetd step is after the btrfs snapshot" <<<"$out" || fail "not said: $out"
+
+# The login screen's step has CachyOS's own steps' hour (it rebuilds both kernels' initramfs): cut off, the install fails
+snapstep="  - shellprocess@btrfs_snapshot"
+setup ""
+out=$(run) || fail "it failed: $out"
+grep -qx 'timeout: 3600' "$t/c/modules/shellprocess_greetd.conf" || fail "the greetd step's time isn't an hour"
+
+# No "Log in automatically" box (greetd's login screen isn't set up by the step it's for): one CachyOS turned on, off
+setup ""
+printf '%s\n' '---' 'doAutoLogin: true' 'displayAutologin: true' 'sudoersGroup: wheel' >"$t/c/modules/users.conf"
+out=$(run) || fail "it failed with autologin on: $out"
+[[ $(cat "$t/c/modules/users.conf") == $'---\ndoAutoLogin: false\ndisplayAutologin: false\nsudoersGroup: wheel' ]] ||
+    fail "the autologin box not kept off: $(cat "$t/c/modules/users.conf")"
+
+# AgrOS's snapshot step's own command, run with snapper stubbed (its list, the renames it was asked for) and its
+# temporary files in the test's folder: the installation's snapshot renamed; none described so, said, none renamed
+cmd=$t/snapcmd.sh
+awk '/^ - command: \|$/ { on = 1; next } on && /^[^ ]/ { on = 0 } on { sub(/^      /, ""); print }' \
+    "$t/c/modules/shellprocess_agrossnapshot.conf" | sed "s|/tmp/|$t/tmp/|g" >"$cmd"
+grep -q 'snapper' "$cmd" || fail "the snapshot step's command not read: $(cat "$t/c/modules/shellprocess_agrossnapshot.conf")"
+mkdir -p "$t/tmp" "$t/sbin"
+# shellcheck disable=SC2016  # (the stub's own variables)
+printf '%s\n' '#!/bin/sh' 'case "$*" in' '  *" list "*) printf "%b" "$SNAPS" ;;' \
+    "  *\" modify \"*) echo \"\$*\" >>\"$t/renamed\" ;;" 'esac' >"$t/sbin/snapper"
+# (and GRUB's menu not made again: on a machine with grub-btrfs the command would remake the machine's own)
+printf '%s\n' '#!/bin/sh' 'exit 0' >"$t/sbin/grub-mkconfig"
+chmod +x "$t/sbin/snapper" "$t/sbin/grub-mkconfig"
+snap() { rm -f "$t/renamed"; SNAPS=$1 PATH=$t/sbin:$PATH sh "$cmd" 2>&1; }
+out=$(snap 'number,description\n0,current\n1,Fresh CachyOS Installation\n2,pre\n')
+[[ $(cat "$t/renamed" 2>/dev/null) == "--no-dbus -c root modify --description Fresh AgrOS Installation 1" ]] ||
+    fail "the installation snapshot not renamed: $(cat "$t/renamed" 2>/dev/null) ($out)"
+[[ -z $out ]] || fail "a rename said something: $out"
+out=$(snap 'number,description\n0,current\n1,Fresh CachyOS install\n')
+[[ ! -e $t/renamed ]] || fail "a snapshot renamed though none is the installation's: $(cat "$t/renamed")"
+grep -q "no snapshot described as the installation's" <<<"$out" || fail "no installation snapshot, not said: $out"
+[[ -z $(ls -A "$t/tmp") ]] || fail "the step's temporary files left: $(ls -A "$t/tmp")"
 echo "ok calamares-config"
