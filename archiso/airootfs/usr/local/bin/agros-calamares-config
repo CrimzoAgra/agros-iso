@@ -26,7 +26,7 @@ CONF
 cat >"$mods/shellprocess_greetd.conf" <<'CONF'
 ---
 dontChroot: false
-timeout: 600
+timeout: 3600
 script:
  - command: |
       # The packages' own pacman.conf, resolv.conf and mirror lists, set aside because the live system's (AgrOS's repos,
@@ -52,7 +52,8 @@ script:
       # before /boot/grub existed (boot-menu left it for now), and the installer's grubcfg and plymouthcfg steps set CachyOS's after it.
       # boot-menu keeps CachyOS's settings as grub.agros-orig and notes its run (agros-boot's upgrades don't run it again unchanged);
       # on an AMD GPU splash-theme keeps CachyOS's plain splash, as plymouthcfg chose
-      # (timeout 600: the splash rebuilds both kernels' initramfs)
+      # (timeout 3600, as CachyOS's own steps have: the splash rebuilds both kernels' initramfs, and the boot menu
+      # looks for other systems on every disk; cut off, the whole install would fail at its end)
       /usr/lib/agros/boot-menu || echo "AgrOS: the boot menu left as it was"
       /usr/lib/agros/splash-theme || echo "AgrOS: the splash left as it was"
       if [ -f /etc/greetd/caelestia-greeter/greetd-config.toml ]; then
@@ -76,9 +77,15 @@ script:
  - command: |
       # (no dollar signs, as in the greetd step. Not btrfs, or no snapshot taken: nothing to do)
       if snapper --no-dbus -c root --csvout list --columns number,description >/tmp/agros-snapshots 2>/dev/null; then
-        grep -x '[1-9][0-9]*,Fresh .* Installation' /tmp/agros-snapshots | cut -d, -f1 |
-          xargs -r -I{} snapper --no-dbus -c root modify --description 'Fresh AgrOS Installation' {} ||
-          echo "AgrOS: the installation snapshot not renamed"
+        # (none described so: said, as CachyOS may have named it otherwise)
+        if grep -x '[1-9][0-9]*,Fresh .* Installation' /tmp/agros-snapshots >/tmp/agros-installation; then
+          cut -d, -f1 /tmp/agros-installation |
+            xargs -r -I{} snapper --no-dbus -c root modify --description 'Fresh AgrOS Installation' {} ||
+            echo "AgrOS: the installation snapshot not renamed"
+        else
+          echo "AgrOS: no snapshot described as the installation's (Fresh ... Installation): none renamed"
+        fi
+        rm -f /tmp/agros-installation
         if [ -x /etc/grub.d/41_snapshots-btrfs ] && [ -d /boot/grub ]; then
           grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 || echo "AgrOS: the installation snapshot not added to the boot menu"
         fi
@@ -101,6 +108,10 @@ sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i -e '/^ *name.*:/s/CachyOS/AgrOS/' -e '/^ *name\[fr\]:/s/pour le AgrOS/pour AgrOS/' -e "/^ *name\\[fr\\]:/s/ de AgrOS/ d'AgrOS/" \
     "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true  # (French: "le/de CachyOS")
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
+# No "Log in automatically" box on the users page, and none chosen: AgrOS's login screen is greetd's, which the
+# installer's display manager step doesn't set up, so it would do nothing. Calamares hides it unless displayAutologin
+# is true (CachyOS's users.conf has none); kept so if CachyOS turns it on
+sed -i -e 's/^\( *displayAuto[Ll]ogin:\).*/\1 false/' -e 's/^\( *doAuto[Ll]ogin:\).*/\1 false/' "$mods/users.conf" 2>/dev/null || true
 # The room AgrOS needs, not CachyOS's 8 GB: the welcome page's check, and the least the partition page leaves for the
 # new system beside Windows (this plus 2.1 GB) or in place of a partition (plus 0.5 GB). A new install is about 14 GB
 # of packages, and about 4 GB more downloaded while it installs (cleared at its end): beside Windows at CachyOS's
@@ -182,7 +193,7 @@ grep -q '^ \+minimumSize:' "$mods/partition.conf" || echo "AgrOS: the EFI partit
 # the btrfs snapshot, whichever module takes it (a shellprocess script, or gucc on their newer branches), or before the
 # clean-up, as CachyOS's older branch has it
 # step_at <step>: its line in settings.conf's sequence (none: empty)
-step_at() { grep -n "^ *- $1\$" "$settings" | head -1 | cut -d: -f1 || true; }
+step_at() { grep -n -m1 "^ *- $1\$" "$settings" | cut -d: -f1 || true; }
 snapshot='[^ @]*@btrfs_snapshot'
 if ! grep -q '^ *- shellprocess@greetd$' "$settings"; then
     grep -q '^- id: *greetd$' "$settings" ||
