@@ -68,7 +68,10 @@ for f in buildiso.sh util-iso.sh .github/workflows/x.yml archiso/profiledef.sh a
     archiso/airootfs/etc/sudoers.d/x archiso/airootfs/etc/polkit-1/rules.d/x.rules archiso/airootfs/etc/pacman.d/hooks/x.hook \
     archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service archiso/airootfs/etc/ssh/sshd_config.d/x.conf \
     archiso/airootfs/etc/shadow archiso/airootfs/root/.zlogin archiso/airootfs/usr/local/bin/x \
-    archiso/airootfs/etc/calamares/settings.conf archiso/airootfs/usr/share/calamares/branding/x/branding.desc keys/x.gpg; do
+    archiso/airootfs/etc/calamares/settings.conf archiso/airootfs/usr/share/calamares/branding/x/branding.desc keys/x.gpg \
+    archiso/airootfs/etc/greetd/config.toml archiso/airootfs/etc/udev/rules.d/x.rules archiso/airootfs/etc/pam.d/x \
+    archiso/airootfs/etc/tmpfiles.d/x.conf archiso/airootfs/etc/profile.d/x.sh archiso/airootfs/etc/ld.so.preload \
+    archiso/airootfs/etc/mkinitcpio.conf.d/x.conf; do
     case_ "$agros" '8a newtool' archiso/syslinux/splash.png "$f"
     grep -qx "why=it changes files to look at first (they run as root or decide what's trusted): $f" <<<"$out" ||
         fail "a change to $f not held for a look: $out"

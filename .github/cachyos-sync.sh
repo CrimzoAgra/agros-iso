@@ -18,7 +18,7 @@ url=${CACHYOS_URL:-https://github.com/CachyOS/CachyOS-Live-ISO.git}
 out=${GITHUB_OUTPUT:-/dev/stdout}
 list=archiso/packages_desktop.x86_64
 # The files a change of theirs to is never merged by itself (prepare's why), as an extended regex on paths
-sensitive='^(\.github/|[^/]+\.sh$|.*\.(asc|gpg)$|archiso/(profiledef\.sh|pacman\.conf)$|archiso/airootfs/(root/|usr/local/bin/|usr/share/calamares/|etc/(pacman|sudoers|polkit-1/|systemd/|ssh/|calamares/|passwd$|shadow$|group$|gshadow$)))'
+sensitive='^(\.github/|[^/]+\.sh$|.*\.(asc|gpg)$|archiso/(profiledef\.sh|pacman\.conf)$|archiso/airootfs/(root/|usr/local/bin/|usr/share/calamares/|etc/(pacman|sudoers|polkit-1/|systemd/|ssh/|calamares/|passwd$|shadow$|group$|gshadow$|greetd/|pam\.d/|security/|udev/|tmpfiles\.d/|sysusers\.d/|modprobe\.d/|mkinitcpio|profile|environment$|ld\.so|NetworkManager/dispatcher\.d/)))'
 # (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
 # merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
 # and a failed fetch stopped a merge already checked)
@@ -93,8 +93,10 @@ case ${1:-} in
             kde=$(pkgs HEAD | grep -E '^(plasma|kde|kf6|breeze)' | paste -sd' ' || true)
             # (what main would get of theirs that runs as root or decides what's trusted, looked at before it's
             # published: the build's scripts and the workflows, keys, the repos and pacman's settings, sudo, polkit,
-            # systemd units, SSH, the accounts, root's files, the live system's own scripts and the installer's settings)
-            touched=$(git diff --name-only origin/main HEAD | { grep -E "$sensitive" || true; } | paste -sd' ')
+            # systemd units, SSH, the accounts, root's files, the live system's own scripts and the installer's settings;
+            # what else root runs or loads: udev rules, PAM, the login, boot-time files, shell profiles, preloads.
+            # A rename by both its names: a file moved out of these paths is a change to them too)
+            touched=$(git diff --name-only --no-renames origin/main HEAD | { grep -E "$sensitive" || true; } | paste -sd' ')
             if [[ -n $back ]]; then
                 why="it would bring back packages AgrOS left out: $back"
             elif [[ -n $kde ]]; then
