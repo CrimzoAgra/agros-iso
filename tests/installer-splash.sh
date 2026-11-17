@@ -71,4 +71,21 @@ run no-runtime-dir || rc=$?
 [[ ! -e $t/qs.env ]] || fail "a splash opened with no XDG_RUNTIME_DIR"
 ((planted)) || [[ ! -e /tmp/agros-installer-splash ]] || fail "the splash's file written in /tmp"
 [[ -e $t/home/.calamares-online.lock ]] || fail "with no XDG_RUNTIME_DIR, the lock isn't in the home"
+
+# The splash closed by the user, its pid since another process's: that one not killed when the run ends (a pid only
+# killed while the splash's lock is held)
+sleep 30 &
+other=$!
+echo "$other" >"$t/other.pid"
+printf '%s\n' '#!/bin/sh' 'for i in 1 2 3 4 5 6 7 8 9 10; do [ -e "$T/qs.env" ] && break; sleep 0.5; done' \
+    'kill "$(cat "$T/qs.pid")" 2>/dev/null; sleep 0.5' 'cat "$T/other.pid" >"$XDG_RUNTIME_DIR/agros-installer-splash.pid"' \
+    'exit 1' >"$t/bin/sudo"
+rm -f "$t/qs.env" "$t/qs.pid"
+rc=0
+run || rc=$?
+[[ $rc == 1 ]] || fail "the keyring step failing didn't stop it (status $rc): $(cat "$t/out")"
+[[ -s $t/qs.env ]] || fail "no splash opened"
+kill -0 "$other" 2>/dev/null || fail "a closed splash's stale pid killed at the end"
+kill "$other"
+wait "$other" || true
 echo "ok installer-splash"
