@@ -65,7 +65,12 @@ case ${1:-} in
     prepare)
         echo "new=$new" >>"$out"
         if [[ $new == 0 ]]; then echo "Nothing new from CachyOS"; exit 0; fi
-        git push -q -f origin "$theirs:refs/heads/cachyos"
+        # (GitHub's token may not push a change to a workflow file: one of CachyOS's to theirs, .github/workflows, stops
+        # the sync here each day until the branch is pushed by hand, said how)
+        git push -q -f origin "$theirs:refs/heads/cachyos" || {
+            echo "::error::The branch cachyos couldn't be pushed (a change of CachyOS's to .github/workflows, which GitHub's token may not push?). By hand: git fetch $url master && git push -f origin FETCH_HEAD:refs/heads/cachyos"
+            exit 1
+        }
         why=
         if ! git merge-tree --write-tree --no-messages origin/main "$theirs" >/dev/null; then
             why="it conflicts with AgrOS's changes"
