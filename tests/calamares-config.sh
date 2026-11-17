@@ -156,4 +156,12 @@ out=$(snap 'number,description\n0,current\n1,Fresh CachyOS install\n')
 [[ ! -e $t/renamed ]] || fail "a snapshot renamed though none is the installation's: $(cat "$t/renamed")"
 grep -q "no snapshot described as the installation's" <<<"$out" || fail "no installation snapshot, not said: $out"
 [[ -z $(ls -A "$t/tmp") ]] || fail "the step's temporary files left: $(ls -A "$t/tmp")"
+
+# A file it edits gone (CachyOS moved it), after a note was said: the installer not started, and its last "AgrOS: "
+# line, the one calamares-online.sh shows, says that, not the note
+setup ""
+printf '%s\n' '---' 'requirements:' '    requiredRam:        2.5' >"$t/c/modules/welcome_online.conf"
+rm "$t/c/modules/bootloader.conf"
+! out=$(run) || fail "a missing bootloader.conf not caught: $out"
+[[ $(grep '^AgrOS: ' <<<"$out" | tail -1) == "AgrOS: a step of its own failed"* ]] || fail "the failure not its last line: $out"
 echo "ok calamares-config"
