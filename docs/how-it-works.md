@@ -63,7 +63,7 @@ The AgrOS ones in `archiso/airootfs/`:
 1. **Options.** `-c`, `-r`, `-w`, `-f`, `-a`, `-u`, `-p` and `-h`, as in [Building the ISO](../manual/03-building.md);
    any other, or an argument, stops it, as does a `$` in AgrOS's commands for Calamares (`check_calamares_commands`:
    its installer would never open). The work folder is `build/` (with `-r`, a `mktemp` folder in `/tmp`, RAM, if it
-   has 14 GB free: the live system unpacked, about 7.6 GB, and the ISO's files with its squashfs, about 3.3 GB); the
+   has 14 GB free: the live system unpacked, about 4.2 GB, and the ISO's files with its squashfs, about 1.9 GB); the
    output is `out/desktop/` (`iso_out_dir`). `check_requirements` installs what the build needs on the host and is
    missing (`archiso`, `git`, `grub`: the one list of them; `squashfs-tools` comes with `archiso`, and
    `mkinitcpio-archiso` goes into the ISO from its package list) with `sudo pacman -S`, or stops with the command to
