@@ -123,6 +123,9 @@ EOF
         why=$(grep '^AgrOS:' "$log" | tail -1)
         not_set_up "${why:-The AgrOS settings for the installer did not apply}." "Details: $log"
     fi
+    # AgrOS: the desktop first: its window waits for Caelestia's bar to be up (its IPC answering; up to 20 s), not on a
+    # bare screen before it, the bar then coming up around it
+    for _ in {1..100}; do qs ipc -c caelestia show >/dev/null 2>&1 && break; sleep 0.2; done
     # (not exec: pkexec closes the lock, and this keeps it while the installer is open)
     pkexec-wrapper calamares -D6 >> "$log"
 }
