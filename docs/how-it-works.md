@@ -285,6 +285,11 @@ as the partition names, from the palette and not the stylesheet.
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name (`users.conf`); `efiBootloaderId: "AgrOS"` (`bootloader.conf`), the
   firmware's boot entry and GRUB's folder `EFI/AgrOS`.
+- The room AgrOS needs, 20 GB (`welcome_online.conf`'s `requiredStorage`, CachyOS's 8): the welcome page checks it,
+  and the partition page leaves at least that plus 2.1 GB for the new system beside Windows (plus 0.5 GB in place of
+  a partition). A new install is about 14 GB of packages, with about 4 GB more downloaded while it installs (cleared at
+  its end); at CachyOS's 10 GB beside Windows it would run out of room halfway, after Windows' partition was shrunk. Not
+  set (CachyOS moved the setting): said, and the installer starts as before.
 - CachyOS's `remove-nvidia` and `dmcheck`, scripts of its ISO that AgrOS's doesn't have, out of what the install copies
   to the new system (`pacstrap.conf`'s `postInstallFiles`: each install logged "Failed to copy file") and runs there
   (`shellprocess.conf`: CachyOS's `cachyos` branch runs `/usr/local/bin/dmcheck`, which picks the login screen, as the

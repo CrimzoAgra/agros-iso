@@ -101,6 +101,13 @@ sed -i 's/^branding: .*/branding: agros/' "$settings"
 sed -i -e '/^ *name.*:/s/CachyOS/AgrOS/' -e '/^ *name\[fr\]:/s/pour le AgrOS/pour AgrOS/' -e "/^ *name\\[fr\\]:/s/ de AgrOS/ d'AgrOS/" \
     "$mods"/shellprocess-before-online.conf "$mods"/shellprocess-before.conf 2>/dev/null || true  # (French: "le/de CachyOS")
 sed -i 's/template: "cachyos-\${cpu}"/template: "agros-${cpu}"/' "$mods/users.conf" 2>/dev/null || true
+# The room AgrOS needs, not CachyOS's 8 GB: the welcome page's check, and the least the partition page leaves for the
+# new system beside Windows (this plus 2.1 GB) or in place of a partition (plus 0.5 GB). A new install is about 14 GB
+# of packages, and about 4 GB more downloaded while it installs (cleared at its end): beside Windows at CachyOS's
+# 10 GB it would run out of room halfway, after Windows' partition was shrunk. Not set (CachyOS moved it): said
+sed -i 's/^\( *requiredStorage:\).*/\1    20.0/' "$mods/welcome_online.conf" 2>/dev/null || true
+grep -q '^ *requiredStorage: *20\.0$' "$mods/welcome_online.conf" 2>/dev/null ||
+    echo "AgrOS: the room the installer asks for left as CachyOS has it"
 # The boot entry the firmware lists (and GRUB's folder on the boot partition, EFI/AgrOS)
 sed -i 's/^efiBootloaderId: .*/efiBootloaderId: "AgrOS"/' "$mods/bootloader.conf" 2>/dev/null || true
 # Two scripts of CachyOS's ISO that AgrOS's ISO doesn't have: remove-nvidia (only CachyOS's offline install runs it) and
