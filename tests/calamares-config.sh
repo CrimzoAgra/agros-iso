@@ -10,21 +10,23 @@ set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 cfg=$here/archiso/airootfs/usr/local/bin/agros-calamares-config
-# A fresh copy of the installer's files, with CachyOS's partition.conf followed by $1 (its efi block, if any)
+# A fresh copy of the installer's files, with CachyOS's partition.conf followed by $1 (its efi block, if any), and
+# $snapstep (CachyOS's btrfs snapshot step) in its sequence
 setup() {
     rm -rf "$t/c"
-    mkdir -p "$t/c/modules" "$t/c/py/pacstrap" "$t/c/py/grubcfg" "$t/c/py/chwd"
+    mkdir -p "$t/c/modules" "$t/c/py/pacstrap" "$t/c/py/grubcfg"
     printf '%s\n' 'sequence:' '- show:' '  - welcome' '  - packagechooser@bootloader' '- exec:' \
-        '  - shellprocess@btrfs_snapshot' '  - shellprocess@cleanup_calamares' 'branding: cachyos' 'instances:' \
+        "$snapstep" '  - shellprocess@cleanup_calamares' 'branding: cachyos' 'instances:' \
         '- id: cleanup_calamares' '  module: shellprocess' '  config: shellprocess_cleanup.conf' >"$t/c/settings.conf"
     printf '%s\n' 'efiBootLoaderVar: "packagechooser_bootloader"' 'efiBootLoader: "limine"' 'efiBootloaderId: "cachyos"' \
         >"$t/c/modules/bootloader.conf"
     printf '%s\n' 'efiSystemPartition:     "/boot"' 'efiSystemPartitionSize:     2048M' 'allowZfsEncryption: true' "$1" \
         >"$t/c/modules/partition.conf"
-    for m in pacstrap grubcfg chwd; do
+    for m in pacstrap grubcfg; do
         echo '    bootloader = libcalamares.globalstorage.value("packagechooser_bootloader")' >"$t/c/py/$m/main.py"
     done
 }
+snapstep="  - shellprocess@btrfs_snapshot"
 run() { bash "$cfg" "$t/c/settings.conf" "$t/c/modules" "$t/c/py" 2>&1; }
 p=$t/c/modules/partition.conf
 # (YAML's own reading, where python's yaml is there: the installer would stop on a file that doesn't parse)
@@ -76,4 +78,32 @@ out=$(run) || fail "a command allowed to fail stopped it: $out"
 printf '%s\n' '---' 'script:' '    - command: "/usr/local/bin/agros-test-not-here"' >"$t/c/modules/shellprocess_cleanup.conf"
 ! out=$(run) || fail "a command the ISO lacks not caught: $out"
 grep -q "runs /usr/local/bin/agros-test-not-here, which this ISO doesn't have" <<<"$out" || fail "not said: $out"
+
+# The login screen's step before the btrfs snapshot, and AgrOS's step naming the snapshot right after it, whichever
+# module takes it: a shellprocess script (the cachyos branch) or gucc, their installer's own code (cachyos-staging);
+# once over two runs, settings.conf still YAML, and no dollar sign in AgrOS's command
+s=$t/c/settings.conf
+for snapstep in "  - shellprocess@btrfs_snapshot" "  - gucc@btrfs_snapshot"; do
+    setup ""
+    out=$(run) && out=$(run) || fail "it failed with ${snapstep##* }: $out"
+    [[ $(sed -n '/^- exec:$/,/^branding:/p' "$s" | sed -n 's/^  - //p' | paste -sd' ') == \
+        "shellprocess@agrosgate shellprocess@greetd ${snapstep##* } shellprocess@agrossnapshot shellprocess@cleanup_calamares" ]] ||
+        fail "the steps around ${snapstep##* } not in order: $(cat "$s")"
+    [[ $(grep -c '^- id: *agrossnapshot$' "$s") == 1 ]] || fail "the snapshot step's instance not there once: $(cat "$s")"
+    parses "$s" && parses "$t/c/modules/shellprocess_agrossnapshot.conf" || fail "settings.conf or the snapshot step no longer YAML"
+    ! grep -q '\$' "$t/c/modules/shellprocess_agrossnapshot.conf" || fail "a dollar sign in the snapshot step's command"
+done
+# No snapshot step: the login screen's before the clean-up, none naming a snapshot, said
+snapstep="  - shellprocess@initcpio"
+setup ""
+out=$(run) || fail "it failed with no snapshot step: $out"
+[[ $(sed -n 's/^  - shellprocess@//p' "$s" | paste -sd' ') == "initcpio agrosgate greetd cleanup_calamares" ]] &&
+    ! grep -q agrossnapshot "$s" || fail "not set up as with no snapshot: $(cat "$s")"
+grep -q "no btrfs snapshot step" <<<"$out" || fail "not said: $out"
+# CachyOS's own greetd step after their snapshot (it'd delete it): the installer not started, said
+snapstep=$'  - gucc@btrfs_snapshot\n  - shellprocess@greetd'
+setup ""
+printf '%s\n' '- id: greetd' '  module: shellprocess' '  config: shellprocess_greetd.conf' >>"$s"
+! out=$(run) || fail "a greetd step after the snapshot not caught: $out"
+grep -q "greetd step is after the btrfs snapshot" <<<"$out" || fail "not said: $out"
 echo "ok calamares-config"
