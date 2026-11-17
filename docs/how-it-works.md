@@ -335,7 +335,9 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
   GRUB over it. A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a
   reset), then came to AgrOS instead, or with Secure Boot on maybe to nothing (GRUB's copy isn't signed). The copy is
   made only when there's no `EFI/Microsoft/Boot/bootmgfw.efi` on the boot partition, so a disk with AgrOS alone still
-  gets it. Not patched (CachyOS changed the step): said, and the installer starts as before.
+  gets it. Only `install_grub`'s condition is patched, and only when it's there once: another loader's copy of it has
+  no `install_efi_directory_firmware` to test. Not patched (CachyOS changed the step): said, and the installer starts
+  as before.
 
 ### The branding
 

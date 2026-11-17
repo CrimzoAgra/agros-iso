@@ -180,13 +180,19 @@ done
 # A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a reset), then came
 # to AgrOS (Windows behind Esc in the first second), or with Secure Boot on maybe to nothing (GRUB's copy isn't signed).
 # With no Windows on the boot partition (EFI/Microsoft/Boot/bootmgfw.efi), GRUB's copy as before. Not patched
-# (CachyOS changed the step): said, the install goes on
+# (CachyOS changed the step): said, the install goes on. Only in install_grub (from its def to the next), the one place
+# install_efi_directory_firmware is set, and only with that condition there once: another loader's copy of it would
+# fail on a name it doesn't have
 bl=$pymods/bootloader/main.py
+grub='/^def install_grub(/,/^def /'
+plain='^ *if libcalamares\.job\.configuration\.get(fallback, True):$'
 win='os.path.exists(os.path.join(install_efi_directory_firmware, "Microsoft", "Boot", "bootmgfw.efi"))'
-sed -i 's|^\( *\)if libcalamares.job.configuration.get(fallback, True):$|\1if libcalamares.job.configuration.get(fallback, True) and not '"$win"':|' \
-    "$bl" 2>/dev/null || true
-grep -q '"Microsoft", "Boot", "bootmgfw.efi"' "$bl" 2>/dev/null ||
-    echo "AgrOS: the firmware's fallback loader left to CachyOS's step (GRUB copied over Windows' own)"
+n=$(sed -n "$grub{\\|$plain|p;}" "$bl" 2>/dev/null | grep -c .) || true
+if [[ $n == 1 ]]; then
+    sed -i "$grub"'s|^\( *\)if libcalamares.job.configuration.get(fallback, True):$|\1if libcalamares.job.configuration.get(fallback, True) and not '"$win"':|' "$bl" || true
+fi
+n=$(sed -n "$grub{/\"Microsoft\", \"Boot\", \"bootmgfw.efi\"/p;}" "$bl" 2>/dev/null | grep -c .) || true
+[[ $n == 1 ]] || echo "AgrOS: the firmware's fallback loader left to CachyOS's step (GRUB copied over Windows' own)"
 grep -q '^efiSystemPartition: *"/boot/efi"' "$mods/partition.conf" && grep -q '^efiSystemPartitionSize: *512M' "$mods/partition.conf" &&
     grep -q '^allowZfsEncryption: false' "$mods/partition.conf" ||
     fail "the partition page isn't on GRUB's boot partition ($mods/partition.conf)"

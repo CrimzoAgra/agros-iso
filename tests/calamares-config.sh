@@ -27,10 +27,14 @@ setup() {
     for m in pacstrap grubcfg; do
         echo '    bootloader = libcalamares.globalstorage.value("packagechooser_bootloader")' >"$t/c/py/$m/main.py"
     done
-    # (the bootloader step's GRUB copy over the firmware's fallback loader, as their main.py has it)
+    # (the bootloader step's GRUB copy over the firmware's fallback loader, in install_grub as their main.py has it,
+    # and the same condition in the loaders around it, which have no install_efi_directory_firmware: left alone)
     mkdir -p "$t/c/py/bootloader"
-    printf '%s\n' '        fallback = "installEFIFallback"' '        if libcalamares.job.configuration.get(fallback, True):' \
-        '            shutil.copy2(efi_file_source, efi_file_target)' >"$t/c/py/bootloader/main.py"
+    printf '%s\n' 'def install_limine(efi_directory, fw_type):' '    if libcalamares.job.configuration.get(fallback, True):' \
+        '        pass' 'def install_grub(efi_directory, fw_type, install_hybrid_grub):' '    if fw_type == "efi":' \
+        '        fallback = "installEFIFallback"' '        if libcalamares.job.configuration.get(fallback, True):' \
+        '            shutil.copy2(efi_file_source, efi_file_target)' 'def install_secureboot(efi_directory):' \
+        '    if libcalamares.job.configuration.get(fallback, True):' '        pass' >"$t/c/py/bootloader/main.py"
 }
 snapstep="  - shellprocess@btrfs_snapshot"
 run() { bash "$cfg" "$t/c/settings.conf" "$t/c/modules" "$t/c/py" 2>&1; }
@@ -162,12 +166,15 @@ grep -q "no snapshot described as the installation's" <<<"$out" || fail "no inst
 [[ -z $(ls -A "$t/tmp") ]] || fail "the step's temporary files left: $(ls -A "$t/tmp")"
 
 # Beside Windows, the firmware's fallback loader kept: GRUB copied over it only with no Windows boot manager on the boot
-# partition (the patched condition run as the step would, where python3 is there), once over two runs. The step changed
-# by CachyOS: said, the installer configured all the same
+# partition (the patched condition run as the step would, where python3 is there), once over two runs, in install_grub
+# alone. The step changed by CachyOS, or the condition twice in install_grub: said, nothing patched, the installer
+# configured all the same
 setup ""
 out=$(run) && out=$(run) || fail "it failed: $out"
 b=$t/c/py/bootloader/main.py
 [[ $(grep -c 'bootmgfw' "$b") == 1 ]] || fail "the fallback copy not made conditional, once: $(cat "$b")"
+[[ $(sed -n '/^def install_grub(/,/^def /{/bootmgfw/p;}' "$b") ]] || fail "not install_grub's condition patched: $(cat "$b")"
+[[ $(grep -c 'get(fallback, True):$' "$b") == 2 ]] || fail "the other loaders' condition patched: $(cat "$b")"
 grep -q "fallback loader" <<<"$out" && fail "said as not patched, though it was: $out"
 cond=$(sed -n 's/^ *if \(libcalamares\.job\.configuration\.get(fallback, True) and .*\):$/\1/p' "$b")
 [[ -n $cond ]] || fail "the patched condition not found: $(cat "$b")"
@@ -190,6 +197,11 @@ echo '        if libcalamares.job.configuration.get("installEFIFallback"):' >"$b
 out=$(run) || fail "it failed with the step changed: $out"
 grep -q "fallback loader left to CachyOS's step" <<<"$out" && grep -q 'installer configured' <<<"$out" ||
     fail "the step changed, not said, or not configured: $out"
+setup ""
+sed -i 's/^\( *shutil\.copy2.*\)$/\1\n        if libcalamares.job.configuration.get(fallback, True):\n            pass/' "$b"
+out=$(run) || fail "it failed with the condition twice in install_grub: $out"
+! grep -q bootmgfw "$b" && grep -q "fallback loader left to CachyOS's step" <<<"$out" && grep -q 'installer configured' <<<"$out" ||
+    fail "the condition twice in install_grub: patched, not said, or not configured: $out $(cat "$b")"
 
 # A file it edits gone (CachyOS moved it), after a note was said: the installer not started, and its last "AgrOS: "
 # line, the one calamares-online.sh shows, says that, not the note
