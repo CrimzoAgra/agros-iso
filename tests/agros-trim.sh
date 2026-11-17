@@ -133,10 +133,11 @@ for x in usr/share/locale/locale.alias usr/share/locale/de/LC_MESSAGES/calamares
 done
 for x in usr/share/locale/de/LC_MESSAGES/coreutils.mo usr/share/man/man1/ls.1.gz usr/share/doc/fish/index.html \
     usr/share/doc/hplip-3.25/index.html usr/lib/libnvoptix.so.1 usr/include/stdio.h usr/lib/libQt6Qml.a \
-    usr/share/icons/Bibata-Modern-Amber/cursors/left_ptr usr/lib/libnvidia-tileiras.so.1; do
+    usr/share/icons/Bibata-Modern-Ice/cursors/left_ptr usr/lib/libnvidia-tileiras.so.1 usr/lib/libQt5Core.so.5; do
     extracted "$inst" "$x" || fail "installed systems leave out $x"
 done
-for x in usr/share/doc/foot/README.md usr/share/fonts/TTF/MaterialSymbolsSharp.ttf usr/share/hypr/wall2.png; do
+for x in usr/share/doc/foot/README.md usr/share/fonts/TTF/MaterialSymbolsSharp.ttf usr/share/hypr/wall2.png \
+    usr/share/icons/Bibata-Modern-Amber/cursors/left_ptr; do
     ! extracted "$inst" "$x" || fail "installed systems unpack $x"
 done
 lts_gone
