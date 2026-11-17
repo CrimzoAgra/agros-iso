@@ -54,9 +54,11 @@ jobs:
     with:
       ref: ${{ needs.prepare.outputs.candidate }}
 
+  # (after a failed check or tests too, for the pull request; not after the run was cancelled, which always() also ran
+  # it after, saying "its ISO wasn't built")
   merge:
     needs: [prepare, check, tests]
-    if: ${{ always() && needs.prepare.outputs.candidate != '' }}
+    if: ${{ !cancelled() && needs.prepare.outputs.candidate != '' }}
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7

@@ -86,8 +86,9 @@ jobs:
       image: archlinux:latest
       # (privileged: mkarchiso's mounts)
       options: --privileged
-    # (a manual run from another branch would make that branch's ISO the download)
-    if: ${{ always() && github.ref == 'refs/heads/main' && (needs.sourceforge.result == 'success' || inputs.check) }}
+    # (a manual run from another branch would make that branch's ISO the download) (not always(): with it, a check
+    # (its sourceforge job skipped) cancelled before this job started still ran the whole build)
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (needs.sourceforge.result == 'success' || inputs.check) }}
     timeout-minutes: 210
     defaults:
       run:
