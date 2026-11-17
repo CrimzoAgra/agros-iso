@@ -99,6 +99,13 @@ no_extract=(
     # or debug compute kernels, none on the live system; the display libraries and libcuda itself kept)
     'usr/lib/libnvidia-nvvm*' 'usr/lib/libnvidia-tileiras*' 'usr/lib/libcudadebugger*' 'usr/lib/libnvidia-vksc-core*'
     'usr/share/vulkansc/icd.d/nvidia_icd_vksc.json'
+    # (Qt 5 and KDE Frameworks 5, about 130 MiB: only AgrOS's Qt theme, qtengine, needs them, for its Qt 5 plugin (Qt 5
+    # apps on installed systems); no Qt 5 app is on the live system, the installer and the shell are Qt 6. Their own
+    # translations after the k* ones kept above)
+    'usr/lib/libQt5*' 'usr/lib/libKF5*' 'usr/lib/libpolkit-qt5-*' 'usr/lib/qt/*' 'usr/share/qt/*' 'usr/bin/*-qt5'
+    'usr/lib/cmake/Qt5*' 'usr/lib/cmake/KF5*' 'usr/lib/cmake/PolkitQt5-1/*' 'usr/lib/pkgconfig/Qt5*'
+    'usr/lib/metatypes/qt5*' 'usr/share/qlogging-categories5/*' 'usr/share/kf5/*' 'usr/lib/kf5/*' 'usr/lib/kauth/*'
+    'usr/share/locale/*/LC_MESSAGES/k*5.mo' 'usr/share/locale/*/LC_MESSAGES/k*5_qt.qm'
 )
 # Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
 # (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf

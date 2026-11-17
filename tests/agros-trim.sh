@@ -115,7 +115,10 @@ for x in usr/share/locale/de/LC_MESSAGES/coreutils.mo usr/share/man/man1/ls.1.gz
     usr/lib/gcc/x86_64-pc-linux-gnu/16/libgcc.a usr/share/icons/Bibata-Modern-Amber/cursors/left_ptr \
     usr/share/icons/Bibata-Modern-Ice-Right/cursors/left_ptr usr/share/icons/Bibata-Original-Ice/index.theme \
     usr/lib/libnvidia-tileiras.so.1 usr/lib/libnvidia-nvvm.so.4 usr/lib/libnvidia-nvvm70.so.4 \
-    usr/lib/libcudadebugger.so.1 usr/lib/libnvidia-vksc-core.so.1 usr/share/vulkansc/icd.d/nvidia_icd_vksc.json; do
+    usr/lib/libcudadebugger.so.1 usr/lib/libnvidia-vksc-core.so.1 usr/share/vulkansc/icd.d/nvidia_icd_vksc.json \
+    usr/lib/libQt5Core.so.5.15.19 usr/lib/qt/qml/QtQuick.2/qmldir usr/share/qt/translations/qtbase_de.qm \
+    usr/lib/libKF5I18n.so.5 usr/share/locale/de/LC_MESSAGES/ki18n5.mo usr/share/locale/de/LC_MESSAGES/kauth5_qt.qm \
+    usr/lib/qt/plugins/platformthemes/libqt5engine-plugin.so usr/bin/qmake-qt5; do
     ! extracted "$live" "$x" || fail "the live ISO unpacks $x"
 done
 for x in usr/share/locale/locale.alias usr/share/locale/de/LC_MESSAGES/calamares-python.mo \
@@ -124,7 +127,8 @@ for x in usr/share/locale/locale.alias usr/share/locale/de/LC_MESSAGES/calamares
     usr/share/icons/Bibata-Modern-Ice/cursors/left_ptr usr/share/icons/Bibata-Modern-Ice/index.theme \
     usr/lib/libcuda.so.1 usr/lib/libnvidia-gpucomp.so.620.70.06 usr/lib/libnvidia-ptxjitcompiler.so.1 \
     usr/lib/libnvidia-rtcore.so.620.70.06 usr/lib/libarchive.so.13 usr/lib/libnvidia-allocator.so.1 \
-    usr/share/vulkan/icd.d/nvidia_icd.json; do
+    usr/share/vulkan/icd.d/nvidia_icd.json usr/lib/libQt6Core.so.6 usr/lib/qt6/plugins/platformthemes/libqt6engine-plugin.so \
+    usr/share/locale/de/LC_MESSAGES/ki18n6.mo usr/share/locale/de/LC_MESSAGES/kwidgetsaddons6_qt.qm; do
     extracted "$live" "$x" || fail "the live ISO leaves out $x"
 done
 for x in usr/share/locale/de/LC_MESSAGES/coreutils.mo usr/share/man/man1/ls.1.gz usr/share/doc/fish/index.html \
