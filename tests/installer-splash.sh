@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # calamares-online.sh's splash, with the desktop's tools stubbed: opened drawn on the CPU (from the session's autostart
 # it has no LIBGL_ALWAYS_SOFTWARE, and on VMware's GPU its window was refused: never seen), saying what it waits for,
-# and closed when the installer can't be set up. Started again while it gets ready: no second one. No XDG_RUNTIME_DIR:
-# no splash, nothing in /tmp
+# and closed when the installer can't be set up. Started again while it gets ready: the splash opened again if the user
+# closed it, never two. No XDG_RUNTIME_DIR: no splash, nothing in /tmp
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -41,14 +41,25 @@ pid=$(cat "$t/qs.pid")
 for _ in {1..20}; do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
 ! kill -0 "$pid" 2>/dev/null || { kill "$pid"; fail "the splash left open after the installer couldn't be set up"; }
 
-# Started again while the first gets ready (its lock held): it stops, no second splash
+# Started again while the first gets ready (its lock held): it stops. Its splash closed by the user: opened again, for
+# the first run to close (its pid recorded); its splash up: no second one
 rm -f "$t/qs.env" "$t/qs.pid"
-flock "$t/run/.calamares-online.lock" sleep 3 &
+flock "$t/run/.calamares-online.lock" sleep 5 &
 sleep 0.5
 rc=0
 run || rc=$?
-wait
 [[ $rc == 0 ]] || fail "a second start while it gets ready failed (status $rc): $(cat "$t/out")"
+for _ in {1..20}; do [[ -s $t/qs.env ]] && break; sleep 0.1; done
+[[ -s $t/qs.env ]] || fail "a second start didn't open again the splash the user closed"
+pid=$(cat "$t/qs.pid")
+[[ $(cat "$t/run/agros-installer-splash.pid") == "$pid" ]] || fail "the splash opened again isn't the one the first run closes"
+rm -f "$t/qs.env"
+rc=0
+run || rc=$?
+sleep 0.5
+kill "$pid"
+wait
+[[ $rc == 0 ]] || fail "a second start with the splash up failed (status $rc): $(cat "$t/out")"
 [[ ! -e $t/qs.env ]] || fail "a second start opened a second splash"
 
 # No XDG_RUNTIME_DIR: no splash, and nothing in the shared /tmp (another account could plant or watch a fixed name

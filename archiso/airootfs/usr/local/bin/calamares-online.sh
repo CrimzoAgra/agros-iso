@@ -15,12 +15,24 @@ splash() { [[ -z $splash_file ]] || printf '%s\n' "$1" >"$splash_file"; }
 # (drawn on the CPU: started at login, from the session's autostart (a systemd unit), it lacks the
 # LIBGL_ALWAYS_SOFTWARE the desktop sets in Hyprland's own environment on VMware's GPU, so Hyprland refused its
 # GPU-drawn window and it closed at once, never seen. A logo and a spinner need no GPU on any machine)
+# splash_show: the splash opened, unless one is up. The splash itself holds its lock (taken before it starts, so two
+# starts at once can't both open one), and its pid is in a file: a second start of this reopens one the user closed,
+# and the first run closes whichever is up
+splash_show() {
+    [[ -n $splash_file ]] || return 0
+    (
+        flock -n 8 || exit 0
+        echo "$BASHPID" >"$splash_file.pid"
+        LIBGL_ALWAYS_SOFTWARE=1 exec qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&-
+    ) 8>"$splash_file.lock" &
+}
+# (a pid only killed while the lock is held: one the user closed left a stale pid, which may be another process's now)
+splash_close() { [[ -n $splash_file ]] && ! flock -n "$splash_file.lock" true && kill "$(cat "$splash_file.pid")" 2>/dev/null; }
 splash_open() {
     [[ -n $splash_file ]] || return 0
     splash "$1"
-    LIBGL_ALWAYS_SOFTWARE=1 qs -p /usr/share/agros/installer-splash/shell.qml >/dev/null 2>&1 9>&- &
-    splash_pid=$!
-    trap 'kill "$splash_pid" 2>/dev/null' EXIT
+    splash_show
+    trap splash_close EXIT
 }
 # The installer's window up (Hyprland's list of windows)
 shown() { hyprctl -j clients 2>/dev/null | jq -e 'any(.[]; .class == "io.calamares.calamares")' >/dev/null; }
@@ -41,7 +53,8 @@ main() {
         # (open: brought forward, from whichever workspace it's on, by the desktop's own focus (dots.focus_window:
         # raised over other floating windows too, as a focus alone leaves it under them). Its process there but no
         # window yet, opening or closing: waited for, up to 30 s, its window (brought forward) or its end (a new one
-        # started, as asked). Still getting ready: offline, what to do said again; else its splash already says it)
+        # started, as asked). Still getting ready: offline, what to do said again; else its splash shown again, if the
+        # user closed it, as nothing else shows until the installer's window opens)
         forward() {
             hyprctl eval 'local w = hl.get_window("class:io.calamares.calamares"); if w and dots and dots.focus_window then dots.focus_window(w.address) end' >/dev/null 2>&1
         }
@@ -53,13 +66,13 @@ main() {
                 if shown; then forward; exit 0; fi
                 flock -n 9 && break
             done
-            # (30 s and still no window, nor its end: a slow machine; its splash is up)
-            flock -n 9 || exit 0
+            # (30 s and still no window, nor its end: a slow machine)
+            flock -n 9 || { splash_show; exit 0; }
         elif ! online; then
             notify_offline
             exit 0
         else
-            # (getting ready: its splash is up)
+            splash_show
             exit 0
         fi
     fi
@@ -145,7 +158,7 @@ EOF
         not_set_up "${why:-The AgrOS settings for the installer did not apply}." "Details: $log"
     fi
     # (the splash closed once its window is up: up to 2 minutes looked for)
-    { for _ in {1..240}; do shown && break; sleep 0.5; done; kill "$splash_pid" 2>/dev/null; } 9>&- &
+    { for _ in {1..240}; do shown && break; sleep 0.5; done; splash_close; } 9>&- &
     # (not exec: pkexec closes the lock, and this keeps it while the installer is open)
     pkexec-wrapper calamares -D6 >> "$log"
 }

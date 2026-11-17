@@ -216,10 +216,11 @@ The AgrOS ones in `archiso/airootfs/`:
 `calamares-online.sh` (CachyOS's, with AgrOS's lines):
 
 1. Already running (a lock in `$XDG_RUNTIME_DIR`, or the home without one, never the shared `/tmp`; held until the
-   installer closes), it doesn't start a second one: its
-   window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
+   installer closes), it doesn't start a second one: its window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
    process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
-   forward, or a new one started); still getting ready, its splash is up already.
+   forward, or a new one started); still getting ready, its splash is opened again if the user closed it (never two:
+   the splash holds a lock of its own, and its pid is in a file, so the first run closes whichever is up); offline,
+   what to do is said again.
 2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
    Quickshell: the logo, a spinner and a line from a status file it writes in `$XDG_RUNTIME_DIR`: "Getting the installer ready",
    or, offline, to connect; no `XDG_RUNTIME_DIR`, no splash, as a fixed name in `/tmp` could be planted or watched by
