@@ -12,7 +12,7 @@ The installer downloads every package during the install, so the ISO stays small
 up to date. It needs an internet connection for that.
 
 A new ISO is published after each change to what goes into it, or to AgrOS's packages: [download the
-latest](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso) (see [Download](../README.md#download)). To
-build one yourself on an Arch or CachyOS machine, read on.
+latest](https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/agros-latest.iso) (see [Download](../README.md#download)).
+To build one yourself on an Arch or CachyOS machine, read on.
 
 Next: [What you need](02-requirements.md)

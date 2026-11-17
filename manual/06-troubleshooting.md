@@ -38,8 +38,8 @@ build deletes it first, unless you pass `-c` to resume it.
 altered); the build stops until it's restored: `sudo pacman -S archiso`.
 
 **"Left out of the ISO, git doesn't track them".** The build copies only the files git tracks in `archiso/`. A new file
-of yours: `git add` it. Older builds also left root-owned generated files in `archiso/` (the build now writes them in its
-work folder); they're left out without a warning (.gitignore names them); delete them once, from the repo's folder:
+of yours: `git add` it. Older builds also left root-owned generated files in `archiso/` (the build now writes them in
+its work folder); they're left out without a warning (.gitignore names them); delete them once, from the repo's folder:
 
 ```bash
 cd archiso && sudo rm -rf packages.x86_64 airootfs/etc/{motd,environment,version-tag,edition-tag,gdm} \
@@ -67,8 +67,8 @@ and pick **Replace a partition** on the free space: see AgrOS's manual,
 minutes, saying "Connect to the internet to install"), syncs the clock (waiting up to 30 seconds) and makes a new
 package keyring with the latest Arch and CachyOS keys from the internet; if that fails it says "The installer
 couldn't be set up" and stops before anything is changed. Check the internet connection and start it again (while
-one is still getting ready or open, **Install AgrOS** starts no second one: it brings the open one forward). Its log, with the computer's hardware details at the
-top, is `/home/liveuser/cachy-install.log`. Attach it when you [report a
+one is still getting ready or open, **Install AgrOS** starts no second one: it brings the open one forward). Its log,
+with the computer's hardware details at the top, is `/home/liveuser/cachy-install.log`. Attach it when you [report a
 problem](https://github.com/CrimzoAgra/agros/issues).
 
 Back to the [manual's contents](../README.md#the-agros-iso-manual)

@@ -77,14 +77,15 @@ The AgrOS ones in `archiso/airootfs/`:
    from `[agros]`'s servers in turn (GitHub Pages, then its R2 mirror), and taken only with a good signature by AgrOS's
    key beside it (`agros-approved.sig`, agros's CI signs it; `verify_agros_sig`, against `agros.asc` alone): none, or a
    bad one, from every server, stops the build as a list it can't fetch does
-   (a file the later steps read, in a folder of its own; with `AGROS_UNGATED`, none found is remembered too). Those packages are also downloaded into the live system's files (`/opt/agros/gate`, `gate_fetch`, as
-   the profile is set up: step 3; those packages alone, not what they need) for the installer, and checked once the
-   ISO is made, before it takes its name (`gate_verify`, on mkarchiso's own tree, what went into the ISO): only gated
-   packages, every gated one the ISO has, at its own versions (a mirror updated mid-build, or the installer would put
-   in another Hyprland than the live system's) and approved; else the ISO is deleted and the build stops.
-   Then `check_netinstall`: every package name in the installer's list (`netinstall.yaml`) one the build's repos have
-   (by name, group or what a package provides), else the build stops, naming them: one CachyOS renamed or dropped
-   failed every install at its pacstrap step, after the disk was partitioned.
+   (a file the later steps read, in a folder of its own; with `AGROS_UNGATED`, none found is remembered too). Those
+   packages are also downloaded into the live system's files (`/opt/agros/gate`, `gate_fetch`, as the profile is set up:
+   step 3; those packages alone, not what they need) for the installer, and checked once the ISO is made, before it
+   takes its name (`gate_verify`, on mkarchiso's own tree, what went into the ISO): only gated packages, every gated one
+   the ISO has, at its own versions (a mirror updated mid-build, or the installer would put in another Hyprland than the
+   live system's) and approved; else the ISO is deleted and the build stops. Then `check_netinstall`: every package name
+   in the installer's list (`netinstall.yaml`) one the build's repos have (by name, group or what a package provides),
+   else the build stops, naming them: one CachyOS renamed or dropped failed every install at its pacstrap step, after
+   the disk was partitioned.
 2. **`run_build`** deletes the old work folder (not with `-c`, which resumes a stopped build; `buildiso.sh` refuses it
    when the folder has mkarchiso's last marker, `iso._build_iso_image`) and copies `archiso/` into it: only the files
    git tracks (`copy_profile`, `git ls-files`; edits not committed yet included), so what an older checkout's build
@@ -96,9 +97,10 @@ The AgrOS ones in `archiso/airootfs/`:
    `etc/version-tag` (and in `grub.cfg` and `loopback.cfg`, `CACHYOS_VERSION`, checked in both: the repo's say `GIT`);
    CachyOS's current mirrorlist (the build stops if it can't be downloaded), from CachyOS-PKGBUILDS; the console
    welcome (`etc/motd`, AgrOS's); the `display-manager.service` link to greetd; `packages.x86_64`; `etc/environment`
-   (`ZPOOL_VDEV_NAME_PATH=1`); `etc/edition-tag` (`desktop`); and the installer's Hyprland copy (`gate_fetch`, step 1). Any profile but `desktop` stops the build at once
-   (`buildiso.sh`, right after its options), before anything is deleted or downloaded. With
-   `-f`, it lowers the copy's squashfs zstd level (`profiledef.sh`) from 19 to 6, and stops if that line didn't change.
+   (`ZPOOL_VDEV_NAME_PATH=1`); `etc/edition-tag` (`desktop`); and the installer's Hyprland copy (`gate_fetch`, step 1).
+   Any profile but `desktop` stops the build at once (`buildiso.sh`, right after its options), before anything is
+   deleted or downloaded. With `-f`, it lowers the copy's squashfs zstd level (`profiledef.sh`) from 19 to 6, and stops
+   if that line didn't change.
 4. **mkarchiso changes.** `modify_mkarchiso` copies the system's `/usr/bin/mkarchiso` to the work folder (`mkarchiso`)
    and edits the copy, which the build runs; Arch's own isn't touched (older checkouts edited it in place: see
    [Troubleshooting](../manual/06-troubleshooting.md)). The edits: the ISO doesn't ship Arch's
@@ -116,8 +118,8 @@ The AgrOS ones in `archiso/airootfs/`:
 7. **Checksums and signature** for that ISO only: `.sha1` and `.sha256`, then a detached `.sig`. `sign_with_key` signs
    with AgrOS's key, the one in `agros.asc` (`23B6096B42D05E1E`, the one `agros-keyring` holds; read from the file, as
    the ISO workflow does for its pacman keyring), always: a `GPGKEY` in a `makepkg.conf` isn't read, since the upload
-   refuses a signature by any other key. It signs as the user who ran `sudo` (`as_invoking_user`), with their keyring. With
-   `AGROS_SIGN_LATER` set (the ISO workflow's build) it leaves the ISO unsigned, said, for a later step to sign.
+   refuses a signature by any other key. It signs as the user who ran `sudo` (`as_invoking_user`), with their keyring.
+   With `AGROS_SIGN_LATER` set (the ISO workflow's build) it leaves the ISO unsigned, said, for a later step to sign.
    Without the key, or when gpg fails (no passphrase, pinentry or primary key), it warns and skips the signature; the
    cleanup and upload still run. Signing each build's ISO alone, not every ISO in the folder again, is an AgrOS
    change.
@@ -143,8 +145,8 @@ The AgrOS ones in `archiso/airootfs/`:
 
 - `archiso/pacman.conf`, `archiso/airootfs/etc/pacman.conf` and `pacman-more.conf` (the installed system's) get the
   `[agros]` repo, its database's signature required too (`SigLevel = Required DatabaseRequired`; `agros-system`'s
-  install adds the line on machines installed before); `packages_desktop.x86_64` gets `agros-keyring`, whose key the installer trusts
-  (`calamares-online.sh`) and copies to the installed system.
+  install adds the line on machines installed before); `packages_desktop.x86_64` gets `agros-keyring`, whose key the
+  installer trusts (`calamares-online.sh`) and copies to the installed system.
 - `archiso/airootfs/usr/share/agros/netinstall.yaml`: CachyOS's package list (the installer package's
   `/etc/calamares/modules/netinstall.yaml`) plus the AgrOS group (hidden, selected and critical: `agros-keyring` and
   `agros-desktop`). It's in `/usr/share/agros` because the installer package owns CachyOS's. What's different, and why:
@@ -189,9 +191,10 @@ The AgrOS ones in `archiso/airootfs/`:
 - The boot menus say AgrOS (GRUB and the BIOS menu; the kernel's own files keep their names). CachyOS's unused
   systemd-boot entries (`efiboot/`), its `usr/local/bin` scripts for its offline install and its desktops
   (`remove-nvidia`, `removeun`, `removeun-online`, `choose-mirror`, `prepare-live-desktop.sh` and `dmcheck`; the last
-  two the installer would copy to the new system and run there: out of its steps, below) and its `linux.preset` (for Arch's `linux`, not on the ISO:
-  it only built the LTS kernel's initramfs a second time; each kernel's own preset uses the `archiso.conf` drop-in)
-  are gone. The BIOS menu's background is the AgrOS banner and its title is in the logo's colour (`#bec4ee`).
+  two the installer would copy to the new system and run there: out of its steps, below) and its `linux.preset` (for
+  Arch's `linux`, not on the ISO: it only built the LTS kernel's initramfs a second time; each kernel's own preset uses
+  the `archiso.conf` drop-in) are gone. The BIOS menu's background is the AgrOS banner and its title is in the logo's
+  colour (`#bec4ee`).
 - No boot text on the menus' normal entries (GRUB's `grub.cfg` and `loopback.cfg`, syslinux's BIOS and PXE ones):
   `quiet loglevel=3 rd.udev.log_level=3 systemd.show_status=false`, the list an installed AgrOS gets from agros's
   `system/boot-video-mode` (`QUIET`, the one list), less `splash` (there's no Plymouth on the live ISO). The Legacy
@@ -217,20 +220,20 @@ The AgrOS ones in `archiso/airootfs/`:
 `calamares-online.sh` (CachyOS's, with AgrOS's lines):
 
 1. Already running (a lock in `$XDG_RUNTIME_DIR`, or the home without one, never the shared `/tmp`; held until the
-   installer closes), it doesn't start a second one: its window, open, is brought forward (the desktop's `dots.focus_window`: focused and raised over other windows); its
-   process there with no window yet (opening or closing), its window or its end waited for, up to 30 s (then brought
-   forward, or a new one started); still getting ready, its splash is opened again if the user closed it (never two:
-   the splash holds a lock of its own, and its pid is in a file, so the first run closes whichever is up); offline,
-   what to do is said again.
+   installer closes), it doesn't start a second one: its window, open, is brought forward (the desktop's
+   `dots.focus_window`: focused and raised over other windows); its process there with no window yet (opening or
+   closing), its window or its end waited for, up to 30 s (then brought forward, or a new one started); still getting
+   ready, its splash is opened again if the user closed it (never two: the splash holds a lock of its own, and its pid
+   is in a file, so the first run closes whichever is up); offline, what to do is said again.
 2. Waits for Caelestia's bar (its IPC answering, up to 20 s), then opens a splash (`/usr/share/agros/installer-splash`,
-   Quickshell: the logo, a spinner and a line from a status file it writes in `$XDG_RUNTIME_DIR`: "Getting the installer ready",
-   or, offline, to connect; no `XDG_RUNTIME_DIR`, no splash, as a fixed name in `/tmp` could be planted or watched by
-   another account), closed once the installer's window is up or when it stops: its window takes a minute or two. It's drawn
-   on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from the session's autostart, a systemd unit, it doesn't get what the
-   desktop sets in Hyprland's own environment, and on VMware's GPU Hyprland refused its window, never seen. Waits for
-   the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first login, it
-   also says "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5
-   minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
+   Quickshell: the logo, a spinner and a line from a status file it writes in `$XDG_RUNTIME_DIR`: "Getting the installer
+   ready", or, offline, to connect; no `XDG_RUNTIME_DIR`, no splash, as a fixed name in `/tmp` could be planted or
+   watched by another account), closed once the installer's window is up or when it stops: its window takes a minute or
+   two. It's drawn on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`): started from the session's autostart, a systemd unit, it
+   doesn't get what the desktop sets in Hyprland's own environment, and on VMware's GPU Hyprland refused its window,
+   never seen. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the
+   first login, it also says "Connect to the internet to install" once in a notification and checks every 2 seconds, for
+   up to 5 minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
    Syncs the clock and waits for it (up to 30 seconds), since a keyring "created in the future" breaks the install.
    Waits for the ISO's `pacman-init.service` (the keyring it makes at boot), then makes a new pacman keyring and
    populates the `archlinux`, `cachyos` and `agros` keys, then installs the latest `archlinux-keyring` and
@@ -278,26 +281,27 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
   fails the install
 - `shellprocess_greetd.conf` (one of the install's last steps, in the new system: after the bootloader and the
   services, before the installation snapshot and the cleanup): removes the six `.pacnew` files of the
-  live system's pacman.conf, resolv.conf and mirror lists; clears the downloaded packages from pacman's cache (`paccache -rk0`, about 4 GB the install left there; kept otherwise until three newer versions of each came); deletes the snapshots the install's own package runs made
-  (the boot menu's list starts with the installation's alone); runs agros-boot's `boot-menu` and `splash-theme` now
-  that GRUB is set up (agros-boot's own install runs before `/boot/grub` exists, and the `grubcfg` and `plymouthcfg`
-  steps set CachyOS's after it; on an AMD GPU `splash-theme` keeps the plain `cachyos` theme CachyOS's `plymouthcfg`
-  picks there, as its animated one breaks on some AMD GPUs); and last, copies `caelestia-greeter`'s greetd
-  config into place and enables greetd (CachyOS's installer enables greetd only for its `noctalia-greeter`, so without
-  this AgrOS would boot to a text login). Added where CachyOS's settings don't have it (the `cachyos` branch), before
-  the btrfs snapshot whichever module takes it (a `shellprocess` script, or `gucc`, CachyOS's installer's own code, on
-  their newer branches), else before the cleanup; one after the snapshot (it would delete it) fails. It has an hour,
-  as CachyOS's own steps have (both kernels' initramfs rebuilt, other systems looked for on every disk): cut off, it
-  would fail the whole install at its end.
+  live system's pacman.conf, resolv.conf and mirror lists; clears the downloaded packages from pacman's cache (`paccache
+  -rk0`, about 4 GB the install left there; kept otherwise until three newer versions of each came); deletes the
+  snapshots the install's own package runs made (the boot menu's list starts with the installation's alone); runs
+  agros-boot's `boot-menu` and `splash-theme` now that GRUB is set up (agros-boot's own install runs before `/boot/grub`
+  exists, and the `grubcfg` and `plymouthcfg` steps set CachyOS's after it; on an AMD GPU `splash-theme` keeps the plain
+  `cachyos` theme CachyOS's `plymouthcfg` picks there, as its animated one breaks on some AMD GPUs); and last, copies
+  `caelestia-greeter`'s greetd config into place and enables greetd (CachyOS's installer enables greetd only for its
+  `noctalia-greeter`, so without this AgrOS would boot to a text login). Added where CachyOS's settings don't have it
+  (the `cachyos` branch), before the btrfs snapshot whichever module takes it (a `shellprocess` script, or `gucc`,
+  CachyOS's installer's own code, on their newer branches), else before the cleanup; one after the snapshot (it would
+  delete it) fails. It has an hour, as CachyOS's own steps have (both kernels' initramfs rebuilt, other systems looked
+  for on every disk): cut off, it would fail the whole install at its end.
 - `shellprocess_agrossnapshot.conf` (right after CachyOS's btrfs snapshot step, in the new system): names the
   installation's snapshot "Fresh AgrOS Installation" (`snapper modify`: `gucc` names it in C++, so not in a script of
   theirs) and remakes GRUB's menu, so the snapshot is in it from the first boot (grub-btrfsd only adds snapshots taken
   after it starts). No snapshot step: said, and not added. No snapshot described "Fresh ... Installation" (CachyOS
   named it otherwise): said, none renamed. Each of its failures said, never the install's.
-  Its command, as the greetd step's, has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess command as its own
-  variable (one it doesn't know stops the whole install), turns `$$` into `\$`, and tracks quotes without knowing
-  shell comments. `agros-calamares-config` refuses to start the installer with one, and `buildiso.sh` refuses to build
-  an ISO with one (`check_calamares_commands` in `util.sh`).
+  Its command, as the greetd step's, has no dollar sign at all: Calamares reads `$name`/`${name}` in a shellprocess
+  command as its own variable (one it doesn't know stops the whole install), turns `$$` into `\$`, and tracks quotes
+  without knowing shell comments. `agros-calamares-config` refuses to start the installer with one, and `buildiso.sh`
+  refuses to build an ISO with one (`check_calamares_commands` in `util.sh`).
 - `branding: agros` in `settings.conf`; AgrOS in place of CachyOS in the names of the `shellprocess-before` steps;
   `agros-${cpu}` as the suggested computer name and no "Log in automatically" box (`users.conf`, `displayAutologin`
   and `doAutologin` false: greetd's login screen isn't one the installer's display manager step sets up, so it would
@@ -323,9 +327,9 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
   has it), with `allowZfsEncryption: false` there too. Fails if any of these didn't apply.
 - Installing beside Windows: an EFI partition already on the disk is used down to 64 MB (`partition.conf`'s
   `efi.minimumSize`, added; a minimum CachyOS sets is kept), not refused below the 512 MB a new one is made. Windows
-  makes its own 100 MB, and **Install alongside** and **Replace a partition** stayed greyed out ("too small"); GRUB needs
-  a few MB there, the kernels being on the system's partition. agros's rebuild of the installer checks this minimum on
-  the install-type page (CachyOS's checks the 512 MB).
+  makes its own 100 MB, and **Install alongside** and **Replace a partition** stayed greyed out ("too small"); GRUB
+  needs a few MB there, the kernels being on the system's partition. agros's rebuild of the installer checks this
+  minimum on the install-type page (CachyOS's checks the 512 MB).
 - Beside Windows, the firmware's fallback loader (`EFI/Boot/bootx64.efi`, Windows' copy of its boot manager) is
   kept: CachyOS's `bootloader.conf` has `installEFIFallback: true`, and the `bootloader` step (its `main.py`) copied
   GRUB over it. A machine that starts Windows by that path, or whose boot entries were lost (a firmware update, a
@@ -350,25 +354,27 @@ autostart's systemd unit doesn't get Caelestia's Hyprland environment).
 
 The ISO builds nothing of AgrOS's itself. Everything AgrOS comes from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`), which the agros repo's CI (`ci/build-repo.sh`) builds and publishes on
-GitHub Pages, signed with AgrOS's key. Its second server, `https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/repo/$arch`
-(Cloudflare R2, the bucket the ISO is downloaded from; agros's `mirror.yml` copies Pages there after each CI run), is
-listed after it in all three `pacman.conf` files, so pacman goes there only when Pages can't be reached:
+GitHub Pages, signed with AgrOS's key. Its second server,
+`https://pub-f1a3a482900748e8b69cd81361ab96e1.r2.dev/repo/$arch` (Cloudflare R2, the bucket the ISO is downloaded from;
+agros's `mirror.yml` copies Pages there after each CI run), is listed after it in all three `pacman.conf` files, so
+pacman goes there only when Pages can't be reached:
 
 - **AgrOS's packages.** The live system gets `agros-keyring`, `agros-scripts`, `agros-hyprland-settings`,
-  `agros-welcome`, `agros-hyprbars` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo (`quickshell-git`,
-  `caelestia-shell`, ...) and the installer, `agros/calamares` (below). The installed system gets
+  `agros-welcome`, `agros-hyprbars` and `agros-thunar-usage`, plus the AUR packages AgrOS builds into the repo
+  (`quickshell-git`, `caelestia-shell`, ...) and the installer, `agros/calamares` (below). The installed system gets
   `agros-desktop` and everything it pulls in.
 - **The installer.** The CI rebuilds CachyOS's `cachyos-calamares` PKGBUILD against today's libraries. CachyOS's own
   build was made for Boost 1.91 and didn't start once Arch moved to 1.92. The rebuild's `pkgrel` is CachyOS's plus a dot
   and AgrOS's own number; the ISO's package list names it `agros/calamares`: `[agros]`'s (pacman takes a package from
   the first repo that has it, `[cachyos]`, not the newest), by what it provides, so the ISO has it whatever CachyOS
-  names the package (`cachyos-calamares-next` until 2026-11-17, `cachyos-calamares` since); and it carries small fixes for AgrOS's dark theme: the partition names in the
-  theme's text colours, the package list's highlight cleared on a click on no row, and the language list's English names
-  readable on the highlighted row; and GRUB only: where its compiled modules read the bootloader page's choice (the ZFS
-  pool's GRUB compatibility, the partition page's GRUB settings, its BIOS hint, the boot partition on erase-disk), GRUB,
-  as `agros-calamares-config` does for the Python ones; and an existing EFI partition checked against the minimum size,
-  not the size of a new one (Windows' 100 MB one can be installed beside). The live system has the rebuild that was current when the ISO
-  was built; agros's CI starts a new ISO after it publishes packages.
+  names the package (`cachyos-calamares-next` until 2026-11-17, `cachyos-calamares` since); and it carries small fixes
+  for AgrOS's dark theme: the partition names in the theme's text colours, the package list's highlight cleared on a
+  click on no row, and the language list's English names readable on the highlighted row; and GRUB only: where its
+  compiled modules read the bootloader page's choice (the ZFS pool's GRUB compatibility, the partition page's GRUB
+  settings, its BIOS hint, the boot partition on erase-disk), GRUB, as `agros-calamares-config` does for the Python
+  ones; and an existing EFI partition checked against the minimum size, not the size of a new one (Windows' 100 MB one
+  can be installed beside). The live system has the rebuild that was current when the ISO was built; agros's CI starts a
+  new ISO after it publishes packages.
 
 So the repo has to be published before you build: the build's pacman reads it, and so does the installer.
 
@@ -395,8 +401,8 @@ when that's safe:
    push.
 4. Anything else (a conflict, a package check, the ISO not building, a test failing, its Hyprland waiting for AgrOS's
    check): a pull request from `cachyos` into `main`, opened or brought up to date, lists their commits, the files they
-   change, those that conflict, and why it wasn't merged by itself. GitHub notifies of it. Merged on GitHub when it has no
-   conflicts; otherwise by hand:
+   change, those that conflict, and why it wasn't merged by itself. GitHub notifies of it. Merged on GitHub when it has
+   no conflicts; otherwise by hand:
 
 ```bash
 git pull upstream master
