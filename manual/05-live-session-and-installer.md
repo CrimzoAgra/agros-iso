@@ -7,16 +7,14 @@ banner behind it.
 
 On UEFI (GRUB, starts **AgrOS** after 10 seconds; the menu's first line is only the "Welcome to AgrOS" title):
 
-- **AgrOS**: the live session on CachyOS's current kernel. The default.
-- **AgrOS LTS Kernel**: the same on CachyOS's LTS kernel. Try it if the default doesn't boot.
-- **AgrOS Legacy Hardware (GPU nomodeset)**: the LTS kernel with the graphics drivers' own modes off and NVIDIA's
-  driver not loaded. For a screen that stays black.
-- Memtest86+, the UEFI Shell, UEFI Firmware Settings, shut down and restart.
+- **AgrOS**: the live session on CachyOS's kernel. The default.
+- **AgrOS Legacy Hardware (GPU nomodeset)**: the same with the graphics drivers' own modes off and NVIDIA's driver
+  not loaded. For a screen that stays black.
+- Memtest86+, UEFI Firmware Settings, shut down and restart.
 
 On BIOS (syslinux, starts the first entry after 15 seconds):
 
-- **AgrOS default**: the live session on the LTS kernel.
-- **AgrOS current kernel**: the same on CachyOS's current kernel, the UEFI menu's default.
+- **AgrOS default**: the live session.
 - **AgrOS Fallback (nomodeset)**: as the Legacy Hardware entry above.
 - Boot existing OS, Memtest86+, Hardware Information (HDT), reboot and power off.
 
