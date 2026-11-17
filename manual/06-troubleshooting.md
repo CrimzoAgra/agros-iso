@@ -51,9 +51,8 @@ cd archiso && sudo rm -rf packages.x86_64 airootfs/etc/{motd,environment,version
 
 **The stick doesn't boot.** Turn off Secure Boot in the BIOS: CachyOS, and so AgrOS, doesn't boot with it on.
 
-**It hangs or the screen stays black.** Pick **AgrOS LTS Kernel** in the boot menu. If that doesn't help either, pick
-**AgrOS Legacy Hardware (GPU nomodeset)** on UEFI or **AgrOS Fallback (nomodeset)** on BIOS. Those two show the
-boot's text (the others hide it), so if it still hangs you see where.
+**It hangs or the screen stays black.** Pick **AgrOS Legacy Hardware (GPU nomodeset)** on UEFI or **AgrOS Fallback
+(nomodeset)** on BIOS. Those two show the boot's text (the others hide it), so if it still hangs you see where.
 
 ## Installing
 

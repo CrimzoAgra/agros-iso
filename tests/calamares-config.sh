@@ -4,8 +4,9 @@
 # block's own indentation, or YAML fails and so does the installer), a minimum of theirs kept, once over two runs, and
 # an efi of theirs written on one line left alone with the installer still configured. And CachyOS's ISO scripts AgrOS's
 # ISO lacks (dmcheck, remove-nvidia) out of what the install copies and runs, any other it would run caught before it
-# starts. On copies of CachyOS's files' lines it reads (settings.conf, bootloader.conf, partition.conf, pacstrap.conf,
-# shellprocess.conf, the bootloader choice in two Python steps)
+# starts. And the room the installer asks for, AgrOS's. On copies of CachyOS's files' lines it reads (settings.conf,
+# bootloader.conf, partition.conf, welcome_online.conf, pacstrap.conf, shellprocess.conf, the bootloader choice in two
+# Python steps)
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -22,6 +23,7 @@ setup() {
         >"$t/c/modules/bootloader.conf"
     printf '%s\n' 'efiSystemPartition:     "/boot"' 'efiSystemPartitionSize:     2048M' 'allowZfsEncryption: true' "$1" \
         >"$t/c/modules/partition.conf"
+    printf '%s\n' '---' 'requirements:' '    requiredStorage:    8.0' '    requiredRam:        2.5' >"$t/c/modules/welcome_online.conf"
     for m in pacstrap grubcfg; do
         echo '    bootloader = libcalamares.globalstorage.value("packagechooser_bootloader")' >"$t/c/py/$m/main.py"
     done
@@ -38,6 +40,18 @@ out=$(run) && out=$(run) || fail "it failed: $out"
 [[ $(grep -c '^efi:' "$p") == 1 && $(grep -c '^  minimumSize: 64M$' "$p") == 1 ]] || fail "the minimum not set once: $(cat "$p")"
 grep -q '^efiSystemPartitionSize: *512M' "$p" || fail "a new EFI partition isn't 512 MB any more: $(cat "$p")"
 parses || fail "partition.conf no longer YAML: $(cat "$p")"
+# The room AgrOS needs (the welcome page's, and the least the partition page leaves beside Windows): set, CachyOS's other
+# requirements kept, still YAML; their setting gone: said, the installer configured all the same
+w=$t/c/modules/welcome_online.conf
+[[ $(cat "$w") == $'---\nrequirements:\n    requiredStorage:    20.0\n    requiredRam:        2.5' ]] ||
+    fail "the room the installer asks for not AgrOS's: $(cat "$w")"
+parses "$w" || fail "welcome_online.conf no longer YAML: $(cat "$w")"
+grep -q "room the installer asks for" <<<"$out" && fail "said as not set, though it was: $out"
+setup ""
+printf '%s\n' '---' 'requirements:' '    requiredRam:        2.5' >"$w"
+out=$(run) || fail "it failed with no room setting: $out"
+grep -q "room the installer asks for left as CachyOS has it" <<<"$out" && grep -q 'installer configured' <<<"$out" ||
+    fail "no room setting not said, or not configured: $out"
 # An efi block of theirs, its keys indented by four: the minimum under it, as indented
 setup $'efi:\n    recommendedSize: 1024MiB'
 out=$(run) || fail "it failed with an efi block: $out"
