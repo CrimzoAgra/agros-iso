@@ -371,10 +371,13 @@ when that's safe:
 1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
    `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
-   `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes none of the files that run as
-   root or decide what's trusted (the build's scripts, the workflows, keys, `profiledef.sh`, the `pacman.conf` files,
-   and in the live system sudo, polkit, systemd units, SSH, the accounts, root's files, `usr/local/bin` and the
-   installer's settings: `sensitive` in the script): those are looked at first.
+   `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes only files known to be harmless
+   (`harmless` in the script: the docs, `*.md` at the top and in `docs/` and `manual/`, `LICENSE`, `.gitignore`,
+   PNG and JPEG images such as the boot menu's background, and the package list, which has the checks above). Any other
+   file is looked at first: an allowlist, as most of the ISO runs as root or decides what's trusted (the build's
+   scripts, the workflows, keys, pacman's settings, sudo, polkit, systemd units, the boot menus' kernel command line,
+   and the live user's files, as it has sudo with no password), and a list of the dangerous paths kept missing some.
+   A rename counts by both its names.
 2. That merge's ISO is built (`iso.yml` with `check`: nothing published), and the tests run on it (`tests.yml`, in a
    job of its own with a read-only token: CachyOS's code runs there).
 3. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 4 instead; a push refused for

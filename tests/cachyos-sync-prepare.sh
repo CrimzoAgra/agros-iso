@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # .github/cachyos-sync.sh prepare, on throwaway repos (CachyOS's, and this one's origin) with gh stubbed: a merge that
 # keeps what AgrOS changed in the ISO's package list is a candidate (its ISO and tests next); one bringing back a package
-# AgrOS left out, adding a KDE one, without AgrOS's installer (agros/calamares), or changing a file that runs as root or
-# decides what's trusted is a pull request saying why
+# AgrOS left out, adding a KDE one, without AgrOS's installer (agros/calamares), or changing any file but docs, images
+# and the package list is a pull request saying why
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -15,15 +15,18 @@ chmod +x "$t/bin/gh"
 export PATH=$t/bin:$PATH
 list=archiso/packages_desktop.x86_64
 
-# case <sed for AgrOS's list> <sed for CachyOS's next commit> [files their commit adds...]: CachyOS's list (20
-# packages, its installer the 12th, a KDE one the 5th) as main's base; main with AgrOS's changes; CachyOS's master one
-# commit on; prepare run in a fresh checkout of origin. Its status in $rc, its output in $out
+# case <sed for AgrOS's list> <sed for CachyOS's next commit> [files their commit adds, or old>new it renames
+# (old in the base)...]: CachyOS's list (20 packages, its installer the 12th, a KDE one the 5th) as main's base; main
+# with AgrOS's changes; CachyOS's master one commit on; prepare run in a fresh checkout of origin. Its status in $rc, its output in $out
 case_() {
     local f
     rm -rf "$t/up" "$t/origin.git" "$t/w" "$t/gh.log"
     g init -q -b master "$t/up"
     mkdir -p "$t/up/archiso"
     seq -f 'pkg%g' 20 | sed 's/^pkg5$/konsole/; s/^pkg12$/cachyos-calamares-staging/' >"$t/up/$list"
+    for f in "${@:3}"; do
+        [[ $f != *'>'* ]] || { mkdir -p "$(dirname "$t/up/${f%>*}")" && echo x >"$t/up/${f%>*}"; }
+    done
     g -C "$t/up" add -A && g -C "$t/up" commit -qm base
     g init -q --bare "$t/origin.git"
     g clone -q "$t/up" "$t/agros"
@@ -31,7 +34,13 @@ case_() {
     g -C "$t/agros" commit -qam agros && g -C "$t/agros" push -q "$t/origin.git" HEAD:refs/heads/main
     rm -rf "$t/agros"
     sed -i "$2" "$t/up/$list"
-    for f in "${@:3}"; do mkdir -p "$(dirname "$t/up/$f")" && echo x >"$t/up/$f"; done
+    for f in "${@:3}"; do
+        if [[ $f == *'>'* ]]; then
+            mkdir -p "$(dirname "$t/up/${f#*>}")" && g -C "$t/up" mv "${f%>*}" "${f#*>}"
+        else
+            mkdir -p "$(dirname "$t/up/$f")" && echo x >"$t/up/$f"
+        fi
+    done
     g -C "$t/up" add -A && g -C "$t/up" commit -qm theirs
     g clone -q "$t/origin.git" "$t/w"
     rc=0
@@ -62,8 +71,15 @@ case_ '/^konsole$/d; /^cachyos-calamares-staging$/d; $a hyprland' '8a newtool'
 grep -qx "why=AgrOS's own installer (agros/calamares) would leave the package list" <<<"$out" ||
     fail "the installer gone not said: $out"
 
-# A file of theirs that runs as root or decides what's trusted: a pull request naming it, whatever else changed; other
-# files (a boot menu's background, a file in the live user's home): a candidate
+# held <file> <why's files>: held for a look, a pull request naming those files
+held() {
+    grep -qx "why=it changes files to look at first (not only docs, images or the package list): $2" <<<"$out" ||
+        fail "a change to $1 not held for a look: $out"
+    ! grep -q '^candidate=' <<<"$out" && grep -q '^pr create' "$t/gh.log" || fail "a change to $1 merged by itself: $out"
+}
+# Any file of theirs but docs, images and the package list: a pull request naming it, whatever else changed. Those
+# that run as root or decide what's trusted, the live user's (it has sudo with no password), the boot menus' (the
+# kernel's command line), scripts anywhere, and one nobody thought of (motd)
 for f in buildiso.sh util-iso.sh .github/workflows/x.yml archiso/profiledef.sh archiso/pacman.conf \
     archiso/airootfs/etc/sudoers.d/x archiso/airootfs/etc/polkit-1/rules.d/x.rules archiso/airootfs/etc/pacman.d/hooks/x.hook \
     archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service archiso/airootfs/etc/ssh/sshd_config.d/x.conf \
@@ -71,14 +87,23 @@ for f in buildiso.sh util-iso.sh .github/workflows/x.yml archiso/profiledef.sh a
     archiso/airootfs/etc/calamares/settings.conf archiso/airootfs/usr/share/calamares/branding/x/branding.desc keys/x.gpg \
     archiso/airootfs/etc/greetd/config.toml archiso/airootfs/etc/udev/rules.d/x.rules archiso/airootfs/etc/pam.d/x \
     archiso/airootfs/etc/tmpfiles.d/x.conf archiso/airootfs/etc/profile.d/x.sh archiso/airootfs/etc/ld.so.preload \
-    archiso/airootfs/etc/mkinitcpio.conf.d/x.conf; do
+    archiso/airootfs/etc/mkinitcpio.conf.d/x.conf archiso/airootfs/usr/lib/systemd/system/x.service \
+    archiso/airootfs/usr/share/polkit-1/rules.d/x.rules archiso/airootfs/etc/skel/.zshrc \
+    archiso/airootfs/etc/xdg/autostart/x.desktop archiso/airootfs/home/liveuser/.config/x archiso/airootfs/usr/bin/x \
+    archiso/grub/grub.cfg archiso/efiboot/loader/entries/01-archiso-linux.conf archiso/syslinux/archiso_sys-linux.cfg \
+    archiso/airootfs/usr/share/x/x.sh archiso/airootfs/etc/motd docs/x/x.md archiso/airootfs/x.md; do
     case_ "$agros" '8a newtool' archiso/syslinux/splash.png "$f"
-    grep -qx "why=it changes files to look at first (they run as root or decide what's trusted): $f" <<<"$out" ||
-        fail "a change to $f not held for a look: $out"
-    ! grep -q '^candidate=' <<<"$out" && grep -q '^pr create' "$t/gh.log" || fail "a change to $f merged by itself: $out"
+    held "$f" "$f"
 done
-case_ "$agros" '8a newtool' archiso/syslinux/splash.png archiso/airootfs/home/liveuser/.config/x archiso/airootfs/etc/motd
-grep -q '^candidate=' <<<"$out" || fail "a change to files of no concern held: $out"
+# A rename by both its names: a file moved to a harmless name, or a harmless one moved anywhere else, held
+case_ "$agros" '8a newtool' 'archiso/airootfs/etc/sudoers.d/x>README2.md'
+held "a move out of sudoers.d" archiso/airootfs/etc/sudoers.d/x
+case_ "$agros" '8a newtool' 'docs/x.md>archiso/airootfs/usr/bin/x'
+held "a move into usr/bin" archiso/airootfs/usr/bin/x
+# Docs, images (a boot menu's background, branding) and the package list: a candidate, renamed among them too
+case_ "$agros" '8a newtool' archiso/syslinux/splash.png archiso/airootfs/usr/share/agros/x.jpg CHANGELOG.md \
+    manual/x.md docs/images/x.png LICENSE .gitignore 'docs/a.md>docs/b.md'
+grep -q '^candidate=' <<<"$out" || fail "a change to docs and images held: $out"
 
 # The repo's own list names the installer as the check looks for it
 grep -qx 'agros/calamares' <(sed 's/#.*//; s/[[:space:]]//g' "$here/$list") ||

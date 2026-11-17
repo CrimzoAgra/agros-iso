@@ -3,8 +3,8 @@
 # else a pull request saying why not. In a checkout of this repo with origin/main; gh with GH_TOKEN.
 #   cachyos-sync.sh prepare        their master fetched and pushed as the branch "cachyos". Nothing new: new=0. A merge
 #                                  with no conflicts that keeps what AgrOS changed on purpose (none of the packages it
-#                                  left out back, none of KDE's, its own installer) and changes none of the sensitive
-#                                  files below (those a look comes first for): made, pushed as "cachyos-merge",
+#                                  left out back, none of KDE's, its own installer) and changes only the harmless
+#                                  files below (anything else a look comes first for): made, pushed as "cachyos-merge",
 #                                  candidate=<its commit> (the workflow builds its ISO and runs the tests on
 #                                  it, then merge); else why=<...>
 #   cachyos-sync.sh merge <commit> main moved to that merge (only forward: main moved on since, a pull request
@@ -17,8 +17,11 @@ set -euo pipefail
 url=${CACHYOS_URL:-https://github.com/CachyOS/CachyOS-Live-ISO.git}
 out=${GITHUB_OUTPUT:-/dev/stdout}
 list=archiso/packages_desktop.x86_64
-# The files a change of theirs to is never merged by itself (prepare's why), as an extended regex on paths
-sensitive='^(\.github/|[^/]+\.sh$|.*\.(asc|gpg)$|archiso/(profiledef\.sh|pacman\.conf)$|archiso/airootfs/(root/|usr/local/bin/|usr/share/calamares/|etc/(pacman|sudoers|polkit-1/|systemd/|ssh/|calamares/|passwd$|shadow$|group$|gshadow$|greetd/|pam\.d/|security/|udev/|tmpfiles\.d/|sysusers\.d/|modprobe\.d/|mkinitcpio|profile|environment$|ld\.so|NetworkManager/dispatcher\.d/)))'
+# The only files a change of theirs to merges by itself (prepare's why), as an extended regex on paths: docs, images,
+# and the package list, which has its own checks. Anything else might run as root or decide what's trusted (the live
+# user has sudo with no password, so its files count too), so a look comes first. An allowlist, as a list of the
+# dangerous paths kept missing some
+harmless='^((docs/|manual/)?[^/]+\.md|LICENSE|\.gitignore|.*\.(png|jpe?g)|archiso/packages_desktop\.x86_64)$'
 # (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
 # merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
 # and a failed fetch stopped a merge already checked)
@@ -91,12 +94,9 @@ case ${1:-} in
             base=$(git merge-base origin/main "$theirs")
             back=$(comm -12 <(comm -23 <(pkgs "$base") <(pkgs origin/main)) <(pkgs HEAD) | paste -sd' ')
             kde=$(pkgs HEAD | grep -E '^(plasma|kde|kf6|breeze)' | paste -sd' ' || true)
-            # (what main would get of theirs that runs as root or decides what's trusted, looked at before it's
-            # published: the build's scripts and the workflows, keys, the repos and pacman's settings, sudo, polkit,
-            # systemd units, SSH, the accounts, root's files, the live system's own scripts and the installer's settings;
-            # what else root runs or loads: udev rules, PAM, the login, boot-time files, shell profiles, preloads.
-            # A rename by both its names: a file moved out of these paths is a change to them too)
-            touched=$(git diff --name-only --no-renames origin/main HEAD | { grep -E "$sensitive" || true; } | paste -sd' ')
+            # (what main would get of theirs besides the harmless files, looked at before it's published. A rename by
+            # both its names: a file moved to a harmless name is a change to its old one too)
+            touched=$(git diff --name-only --no-renames origin/main HEAD | { grep -vE "$harmless" || true; } | paste -sd' ')
             if [[ -n $back ]]; then
                 why="it would bring back packages AgrOS left out: $back"
             elif [[ -n $kde ]]; then
@@ -104,7 +104,7 @@ case ${1:-} in
             elif ! grep -qx 'agros/calamares' <<<"$(pkgs HEAD)"; then
                 why="AgrOS's own installer (agros/calamares) would leave the package list"
             elif [[ -n $touched ]]; then
-                why="it changes files to look at first (they run as root or decide what's trusted): $touched"
+                why="it changes files to look at first (not only docs, images or the package list): $touched"
             fi
         fi
         if [[ -n $why ]]; then
