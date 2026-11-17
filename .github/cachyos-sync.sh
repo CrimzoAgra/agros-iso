@@ -3,20 +3,30 @@
 # else a pull request saying why not. In a checkout of this repo with origin/main; gh with GH_TOKEN.
 #   cachyos-sync.sh prepare        their master fetched and pushed as the branch "cachyos". Nothing new: new=0. A merge
 #                                  with no conflicts that keeps what AgrOS changed on purpose (none of the packages it
-#                                  left out back, none of KDE's, its own installer): made, pushed as "cachyos-merge",
+#                                  left out back, none of KDE's, its own installer) and changes none of the sensitive
+#                                  files below (those a look comes first for): made, pushed as "cachyos-merge",
 #                                  candidate=<its commit> (the workflow builds its ISO and runs the tests on
 #                                  it, then merge); else why=<...>
 #   cachyos-sync.sh merge <commit> main moved to that merge (only forward: main moved on since, a pull request
 #                                  instead), the ISO started, the open pull request closed
 #   cachyos-sync.sh pr <why>       the pull request from "cachyos" opened or brought up to date: their commits, the
 #                                  files they change, those that conflict, and why it wasn't merged by itself
-# Writes new=, candidate= and why= to $GITHUB_OUTPUT (or stdout). CACHYOS_URL: another CachyOS repo (the test's)
+# Writes new=, candidate= and why= to $GITHUB_OUTPUT (or stdout). CACHYOS_URL: another CachyOS repo (the test's).
+# merge and pr need origin/cachyos (the workflow's checkout fetches every branch)
 set -euo pipefail
 url=${CACHYOS_URL:-https://github.com/CachyOS/CachyOS-Live-ISO.git}
 out=${GITHUB_OUTPUT:-/dev/stdout}
 list=archiso/packages_desktop.x86_64
-git fetch -q "$url" master
-theirs=$(git rev-parse FETCH_HEAD)
+# The files a change of theirs to is never merged by itself (prepare's why), as an extended regex on paths
+sensitive='^(\.github/|[^/]+\.sh$|.*\.(asc|gpg)$|archiso/(profiledef\.sh|pacman\.conf)$|archiso/airootfs/(root/|usr/local/bin/|usr/share/calamares/|etc/(pacman|sudoers|polkit-1/|systemd/|ssh/|calamares/|passwd$|shadow$|group$|gshadow$)))'
+# (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
+# merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
+# and a failed fetch stopped a merge already checked)
+case ${1:-} in
+    prepare) git fetch -q "$url" master; theirs=$(git rev-parse FETCH_HEAD) ;;
+    merge | pr) theirs=$(git rev-parse origin/cachyos) ;;
+    *) echo "usage: cachyos-sync.sh prepare | merge <commit> | pr <why>" >&2; exit 2 ;;
+esac
 new=$(git rev-list --count "origin/main..$theirs")
 # pkgs <commit>: its ISO's package list, one per line
 pkgs() { git show "$1:$list" 2>/dev/null | sed 's/#.*//; s/[[:space:]]//g; /^$/d' | sort -u; }
@@ -81,12 +91,18 @@ case ${1:-} in
             base=$(git merge-base origin/main "$theirs")
             back=$(comm -12 <(comm -23 <(pkgs "$base") <(pkgs origin/main)) <(pkgs HEAD) | paste -sd' ')
             kde=$(pkgs HEAD | grep -E '^(plasma|kde|kf6|breeze)' | paste -sd' ' || true)
+            # (what main would get of theirs that runs as root or decides what's trusted, looked at before it's
+            # published: the build's scripts and the workflows, keys, the repos and pacman's settings, sudo, polkit,
+            # systemd units, SSH, the accounts, root's files, the live system's own scripts and the installer's settings)
+            touched=$(git diff --name-only origin/main HEAD | { grep -E "$sensitive" || true; } | paste -sd' ')
             if [[ -n $back ]]; then
                 why="it would bring back packages AgrOS left out: $back"
             elif [[ -n $kde ]]; then
                 why="it would add KDE packages: $kde"
             elif ! grep -qx 'agros/calamares' <<<"$(pkgs HEAD)"; then
                 why="AgrOS's own installer (agros/calamares) would leave the package list"
+            elif [[ -n $touched ]]; then
+                why="it changes files to look at first (they run as root or decide what's trusted): $touched"
             fi
         fi
         if [[ -n $why ]]; then
@@ -113,5 +129,4 @@ case ${1:-} in
         fi
         ;;
     pr) pr "${2:?usage: cachyos-sync.sh pr <why>}" ;;
-    *) echo "usage: cachyos-sync.sh prepare | merge <commit> | pr <why>" >&2; exit 2 ;;
 esac

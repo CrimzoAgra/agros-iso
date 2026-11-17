@@ -57,8 +57,9 @@ msg2 "Left out of the live ISO: %s" "${gone[*]:-nothing}"
 # Files inside packages the live session never uses, never unpacked (NoExtract, in the build's pacman.conf: the live
 # system's own, airootfs/etc/pacman.conf, and so installed systems, get whole packages): the font styles nothing names
 # (foot.ini's "JetBrains Mono Nerd Font" and group.lua's "JetBrains Mono NF" are the JetBrainsMonoNerdFont-* files,
-# the shell's "CaskaydiaCove NF" the CaskaydiaCoveNerdFont-* ones, every icon "Material Symbols Rounded") and
-# Hyprland's own wallpapers (Caelestia's dots set disable_hyprland_logo; Caelestia draws its own); the programs'
+# the shell's "CaskaydiaCove NF" the CaskaydiaCoveNerdFont-* ones, every icon "Material Symbols Rounded"),
+# Hyprland's own wallpapers (Caelestia's dots set disable_hyprland_logo; Caelestia draws its own) and the cursor
+# styles but the desktop's; the programs'
 # translations (the live system is LANG=C.UTF-8, airootfs/etc/locale.conf: they'd never be read), but the installer's
 # and those it may show (Calamares's Python modules', kpmcore's and KDE's, Qt's, the keyboard layouts' names); man and
 # info pages (no man or info on the ISO to read them); docs and help pages (fish's kept: its `help` opens them). A
@@ -71,6 +72,9 @@ unused=(
     'usr/share/fonts/TTF/CaskaydiaCoveNerdFontMono-*' 'usr/share/fonts/TTF/CaskaydiaCoveNerdFontPropo-*'
     'usr/share/fonts/TTF/MaterialSymbolsOutlined*' 'usr/share/fonts/TTF/MaterialSymbolsSharp*'
     'usr/share/hypr/wall*.png'
+    # (the pointer's 11 other Bibata styles: the desktop's is Bibata-Modern-Ice, agros's hypr-vars.lua; another one set
+    # by hand would find no theme)
+    'usr/share/icons/Bibata-*' '!usr/share/icons/Bibata-Modern-Ice/*'
 )
 no_extract=(
     'usr/share/locale/*' '!usr/share/locale/locale.alias' '!usr/share/locale/*/LC_MESSAGES/calamares*'
@@ -93,12 +97,17 @@ no_extract=(
     'usr/lib/firmware/mrvl/prestera/*' 'usr/lib/firmware/nvidia/*-535.113.01.bin*'
     # (C and C++ headers and static libraries: no compiler on the live system, gcc left out above)
     'usr/include/*' 'usr/lib/*.a'
-    # (the pointer's 11 other Bibata styles: the desktop's is Bibata-Modern-Ice, agros's hypr-vars.lua)
-    'usr/share/icons/Bibata-*' '!usr/share/icons/Bibata-Modern-Ice/*'
     # (CUDA's own compilers and debugger, and Vulkan SC (for safety-critical systems): only libcuda loads them, to build
     # or debug compute kernels, none on the live system; the display libraries and libcuda itself kept)
     'usr/lib/libnvidia-nvvm*' 'usr/lib/libnvidia-tileiras*' 'usr/lib/libcudadebugger*' 'usr/lib/libnvidia-vksc-core*'
     'usr/share/vulkansc/icd.d/nvidia_icd_vksc.json'
+    # (Qt 5 and KDE Frameworks 5, about 130 MiB: only AgrOS's Qt theme, qtengine, needs them, for its Qt 5 plugin (Qt 5
+    # apps on installed systems); no Qt 5 app is on the live system, the installer and the shell are Qt 6. Their own
+    # translations after the k* ones kept above)
+    'usr/lib/libQt5*' 'usr/lib/libKF5*' 'usr/lib/libpolkit-qt5-*' 'usr/lib/qt/*' 'usr/share/qt/*' 'usr/bin/*-qt5'
+    'usr/lib/cmake/Qt5*' 'usr/lib/cmake/KF5*' 'usr/lib/cmake/PolkitQt5-1/*' 'usr/lib/pkgconfig/Qt5*'
+    'usr/lib/metatypes/qt5*' 'usr/share/qlogging-categories5/*' 'usr/share/kf5/*' 'usr/lib/kf5/*' 'usr/lib/kauth/*'
+    'usr/share/locale/*/LC_MESSAGES/k*5.mo' 'usr/share/locale/*/LC_MESSAGES/k*5_qt.qm'
 )
 # Installed systems: the same, but what they use kept: their translations (any language can be picked), man pages
 # (CachyOS's base has man), HPLIP's docs (its toolbox's Help button). In the installed system's pacman.conf
@@ -122,7 +131,7 @@ add_noextract() {
 add_noextract "$p/pacman.conf" "${no_extract[*]}" \
     "in the live ISO: unused fonts, cursors, firmware and NVIDIA libraries, Hyprland's wallpapers, translations, man pages, docs, headers"
 add_noextract "$p/airootfs/etc/pacman-more.conf" "${installed[*]} # agros-iso" \
-    "on installed systems: unused font styles, Hyprland's wallpapers, docs"
+    "on installed systems: unused font styles, cursors, Hyprland's wallpapers, docs"
 
 boot=(grub/grub.cfg grub/loopback.cfg syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg)
 keep_lts() { msg2 "The LTS kernel kept in the live ISO: %s (agros-trim.sh)" "$1"; exit 0; }

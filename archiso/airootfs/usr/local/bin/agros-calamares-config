@@ -11,6 +11,9 @@
 set -euo pipefail
 # (the "AgrOS: " line calamares-online.sh shows in its notification)
 fail() { echo "AgrOS: $*"; exit 1; }
+# (a command that stops it unchecked, set -e's, said too: else the notification showed the last "AgrOS: " line before
+# it, a note such as the room left as CachyOS has it, as the reason)
+trap 'fail "a step of its own failed (agros-calamares-config, line $LINENO): an installer file not where it was?"' ERR
 settings=${1:-/etc/calamares/settings.conf}
 mods=${2:-/etc/calamares/modules}
 mkdir -p "$mods"

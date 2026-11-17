@@ -198,6 +198,8 @@ greetd
 greetd-agreety
 foot
 thunar
+# (Thunar's drives and USB sticks in its side panel, mounted with a click: GIO's volume monitor for udisks2)
+gvfs
 agros-thunar-usage
 librewolf
 polkit-gnome
