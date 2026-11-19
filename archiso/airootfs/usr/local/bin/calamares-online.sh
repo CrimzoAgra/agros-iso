@@ -145,7 +145,8 @@ main() {
 
     local progname log
     progname="$(basename "$0")"
-    log="/home/liveuser/cachy-install.log"
+    # (the live user's home: /home/liveuser)
+    log="$HOME/cachy-install.log"
 
     local SYSTEM=""
 
@@ -187,7 +188,18 @@ EOF
     # (its notes in the installer's log)
     follow_keyboard >>"$log" 2>&1 9>&- &
     # (not exec: pkexec closes the lock, and this keeps it while the installer is open)
-    pkexec-wrapper calamares -D6 >> "$log"
+    # (its errors in the log too: pkexec's, Qt's before the installer's own logging starts)
+    local rc=0
+    pkexec-wrapper calamares -D6 >>"$log" 2>&1 || rc=$?
+    # AgrOS: the installer gone by itself (a crash, or a window the graphics never showed, as root's Calamares losing
+    # its Wayland connection in VMware did): said, as the splash only closed and nothing else told the user. Closed by
+    # the user, at the end of an install or before one, it ends with 0
+    if ((rc != 0)); then
+        echo "AgrOS: the installer stopped (status $rc)" >>"$log"
+        notify -u critical -a AgrOS -i dialog-error "The installer closed unexpectedly" \
+            "Open it again with Install AgrOS in the Super menu. Details: $log"
+        exit "$rc"
+    fi
 }
 
 main "$@"
