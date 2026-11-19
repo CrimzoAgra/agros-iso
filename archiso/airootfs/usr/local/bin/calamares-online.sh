@@ -36,6 +36,31 @@ splash_open() {
 }
 # The installer's window up (Hyprland's list of windows)
 shown() { hyprctl -j clients 2>/dev/null | jq -e 'any(.[]; .class == "io.calamares.calamares")' >/dev/null; }
+# AgrOS: the keyboard layout picked on the installer's keyboard page, in the live session too. The installer sets it
+# through locale1 (useLocale1 in its keyboard.conf), which writes it to this file: Plasma's KWin follows that (CachyOS's
+# live ISO turned on its FollowLocale1), Hyprland reads it only when its settings load (agros's hypr-user.lua), so the
+# live session stayed on the US layout and the users page's password was typed on it, not on the layout the new system
+# logs in with (a French or Portuguese one: other characters, a login that never works). Each change applied to
+# Hyprland while this runs (looked at each second), and one more after the installer closes (its Cancel puts the first
+# layout back); only XKB's own characters passed on (letters, digits, , : ( ) + . _ -), nothing that could end Lua's
+# string. Started in the background: it stops once this script has ended
+kb_conf=/etc/X11/xorg.conf.d/00-keyboard.conf
+follow_keyboard() {
+    local seen= now l v o re='^[A-Za-z0-9,:()+._-]*$'
+    xkb() { sed -n "s/.*\"Xkb$1\"[[:space:]]*\"\([^\"]*\)\".*/\1/p" <<<"$now" | head -1; }
+    while :; do
+        now=$(cat "$kb_conf" 2>/dev/null) || now=
+        if [[ $now != "$seen" ]]; then
+            seen=$now l=$(xkb Layout) v=$(xkb Variant) o=$(xkb Options)
+            if [[ -n $l && $l$v$o =~ $re ]]; then
+                hyprctl eval "hl.config({ input = { kb_layout = \"$l\", kb_variant = \"$v\", kb_options = \"$o\" } })" \
+                    >/dev/null 2>&1 || echo "AgrOS: the keyboard layout $l not set in the live session"
+            fi
+        fi
+        kill -0 "$$" 2>/dev/null || return 0
+        sleep 1
+    done
+}
 
 # AgrOS: the installer not started, said in a notification (its one way of failing, before anything touched the disks)
 not_set_up() {
@@ -159,6 +184,8 @@ EOF
     fi
     # (the splash closed once its window is up: up to 2 minutes looked for)
     { for _ in {1..240}; do shown && break; sleep 0.5; done; splash_close; } 9>&- &
+    # (its notes in the installer's log)
+    follow_keyboard >>"$log" 2>&1 9>&- &
     # (not exec: pkexec closes the lock, and this keeps it while the installer is open)
     pkexec-wrapper calamares -D6 >> "$log"
 }
