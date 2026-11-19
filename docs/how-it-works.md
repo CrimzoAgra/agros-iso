@@ -432,8 +432,8 @@ when that's safe:
 3. That merge's ISO is built (`iso.yml` with `check`: nothing published; not when step 2 held it), and the tests run on
    it (`tests.yml`, in a job of its own with a read-only token: CachyOS's code runs there).
 4. It built: `main` moves to the merge (only forward: if `main` moved on meanwhile, step 5 instead; a push refused for
-   anything else, a rule or the token, fails the run) and the ISO workflow is started, which publishes it as after any
-   push.
+   anything else, a rule or the token, fails the run) and the ISO workflow is started (tried 3 times, a minute apart;
+   still refused, the run fails), which publishes it as after any push.
 5. Anything else (a conflict, a package check, what step 2 found or its failing to tell, the ISO not building, a test
    failing, its Hyprland waiting for AgrOS's check): a pull request from `cachyos` into `main`, opened or brought up to
    date, lists their commits, the files they change, those that conflict, and why it wasn't merged by itself. GitHub
