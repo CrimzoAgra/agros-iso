@@ -59,6 +59,8 @@ It's CachyOS's installer (Calamares) with AgrOS's look and settings:
 - If Hyprland was updated after the ISO was made and AgrOS hasn't checked the new version yet, the new system gets
   the ISO's own Hyprland instead, when it still fits with the rest; it updates once AgrOS has checked the new one.
   `/var/log/agros-gate-install.log` on the new system says which.
+- The keyboard layout you pick on its keyboard page applies to the live session at once, so the password you type on
+  the users page is the one your new system's layout types at its login screen.
 
 It needs an internet connection, because it downloads the packages. If you aren't connected when it starts (on Wi-Fi,
 at the first login), it says "Connect to the internet to install": connect, and it goes on by itself within a few
