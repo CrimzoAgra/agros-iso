@@ -1,0 +1,4 @@
+# Packages the CachyOS sync's package check (.github/cachyos-sync-packages.sh) lets onto the ISO by themselves although
+# they start something on their own (an autostart entry, a systemd unit they enable, a preset or generator, a pacman
+# hook, an install script calling systemctl), one a line: "<name>: <why that's fine for AgrOS>". A line with no reason
+# doesn't count. Only for a package new on the ISO: those already on it aren't checked again
