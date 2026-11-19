@@ -8,6 +8,8 @@
 # and GRUB only, with no bootloader page (the bootloader, pacstrap and grubcfg steps and the partition page set to GRUB).
 # Stops with "AgrOS: ..." if a setting didn't apply. Usage: agros-calamares-config [settings.conf [modules dir
 # [python modules dir]]]
+# (AGROS_ROOT: the live system's files under that folder, not /: the build's own check of this on the ISO's installer,
+# util-iso.sh's calamares_verify)
 set -euo pipefail
 # (the "AgrOS: " line calamares-online.sh shows in its notification)
 fail() { echo "AgrOS: $*"; exit 1; }
@@ -148,7 +150,7 @@ done
 for f in shellprocess.conf $(sed -n 's/^ *config: *//p' "$settings"); do
     [ -f "$mods/$f" ] || continue
     while read -r x; do
-        [ -e "$x" ] || fail "the installer runs $x, which this ISO doesn't have ($mods/$f)"
+        [ -e "${AGROS_ROOT:-}$x" ] || fail "the installer runs $x, which this ISO doesn't have ($mods/$f)"
     done < <(grep -v '^ *#' "$mods/$f" | grep -v '^ *- *\(command: *\)\?["'\'']\?-' |
         sed -n 's|.*\(/usr/local/bin/[^"'\'' ]*\).*|\1|p')
 done

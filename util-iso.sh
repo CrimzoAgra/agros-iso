@@ -135,6 +135,29 @@ modify_mkarchiso() {
         ! grep -q 'pacman -Q --sysroot' "$m" || die "mkarchiso changed: AgrOS's edits to it no longer fit (util-iso.sh)"
 }
 
+# calamares_verify <the built live system's files>: AgrOS's settings for the installer (agros-calamares-config) tried
+# on this ISO's own installer, on a copy of its files where calamares-online.sh takes them. One that no longer applies
+# (a new installer moved a setting) stopped the installer on every machine the ISO booted, "couldn't be set up", and
+# nothing told AgrOS: the build stops instead, saying which. Its notes (a setting left as CachyOS has it, the install
+# going on) are warnings in the build's log, each ending in "(agros-calamares-config)"
+calamares_verify() {
+    local r=$1 c out l
+    c=$(mktemp -d) || die "No temporary folder for the installer's settings"
+    if ! { cp "$r/usr/share/calamares/settings_online.conf" "$c/settings.conf" &&
+        cp -r "$r/etc/calamares/modules" "$c/modules" && cp -r "$r/usr/lib/calamares/modules" "$c/py"; } 2>/dev/null; then
+        rm -rf "$c"
+        die "The ISO's installer has no settings where calamares-online.sh takes them (%s)" "$r"
+    fi
+    if ! out=$(AGROS_ROOT=$r bash "$r/usr/local/bin/agros-calamares-config" "$c/settings.conf" "$c/modules" "$c/py" 2>&1); then
+        rm -rf "$c"
+        die "The ISO's installer couldn't be set up: %s" "$(grep '^AgrOS:' <<<"$out" | tail -1 | grep . || tail -1 <<<"$out")"
+    fi
+    rm -rf "$c"
+    while IFS= read -r l; do
+        warning "%s (agros-calamares-config)" "${l#AgrOS: }"
+    done < <(grep '^AgrOS:' <<<"$out" | grep -vx 'AgrOS: installer configured\.')
+}
+
 # The generated files go into the build's copy of the profile (run_build makes it first), not the repo's: written as
 # root, they were left in the repo, root's
 prepare_profile(){
@@ -227,10 +250,13 @@ run_build() {
     # (whatever date mkarchiso named it with: a build past midnight, or its build_date kept by -c, is another day's)
     local _built=("$_out"/agros-????.??.??-x86_64.iso)
     [[ ${#_built[@]} == 1 && -f ${_built[0]} ]] || die "mkarchiso's ISO not found (or several) in %s" "$_out"
-    # (the installer's copy checked before the ISO takes its name: one that fails isn't left as the newest, to be booted)
+    # (the installer's copy and its settings checked before the ISO takes its name: one that fails isn't left as the
+    # newest, to be booted)
     # (mkarchiso's own tree, what went into the ISO: a resumed build (-c) keeps its first run's, not the profile's new one)
     ( gate_verify "${work_dir}/x86_64/airootfs/opt/agros/gate" "${work_dir}/iso/arch/pkglist.x86_64.txt" ) ||
         { sudo rm -f "${_built[0]}"; die "The ISO was deleted: its Hyprland copy didn't check out"; }
+    ( calamares_verify "${work_dir}/x86_64/airootfs" ) ||
+        { sudo rm -f "${_built[0]}"; die "The ISO was deleted: its installer couldn't be set up"; }
     mv "${_built[0]}" "$_out/${iso_file}"
     cp "${work_dir}/iso/arch/pkglist.x86_64.txt" "$_out/${iso_file%.iso}.pkgs.txt"
 

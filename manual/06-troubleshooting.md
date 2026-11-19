@@ -28,6 +28,12 @@ a few minutes), or something between you and the repo changed it. The build does
 **Packages from `[agros]` aren't found.** The ISO's packages come from the `[agros]` repo
 (`https://crimzoagra.github.io/agros/$arch`). Check that it's published and that you can reach it.
 
+**"The ISO's installer couldn't be set up: AgrOS: ...".** The ISO was built, but AgrOS's settings for its installer
+(`agros-calamares-config`) no longer fit the installer it has: a new one (AgrOS's rebuild of CachyOS's, from
+`[agros]`) moved what the line after "AgrOS:" names. Booted, that ISO's installer wouldn't start on any machine, so it
+was deleted. Bring `agros-calamares-config` up to date with the new installer's settings (in its package, under
+`/etc/calamares` and `/usr/share/calamares`), or keep the installer AgrOS had until then, and build again.
+
 **The build is slow.** By default it gets half of the CPU. Use `-a` for all of it, `-f` for a quick test build (a
 lower zstd level), or `-r` to build in RAM when `/tmp` has 14 GB free (about 32 GB of RAM).
 
