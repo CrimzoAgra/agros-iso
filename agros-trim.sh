@@ -117,6 +117,8 @@ no_extract=(
 installed=(
     'usr/share/doc/*' '!usr/share/doc/fish/*' '!usr/share/doc/hplip*/*' 'usr/share/help/*' 'usr/share/gtk-doc/*'
     "${unused[@]}"
+    # (Thunar's "Set as wallpaper" plugin, Xfce's and GNOME's only: agros's own sets it through Caelestia)
+    'usr/lib/thunarx-3/thunar-wallpaper-plugin.so'
 )
 # add_noextract <pacman.conf> <patterns> <where, for the log>
 # (right under [options]: at the file's end it would be under the last repo's section, where pacman ignores it)
