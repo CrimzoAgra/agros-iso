@@ -188,12 +188,24 @@ jobs:
           df -h /
           # (what the build itself needs, buildiso.sh installs: its list is in util.sh's check_requirements)
           pacman -Syu --noconfirm --needed git sudo
-          m=https://mirror.cachyos.org/repo/x86_64/cachyos
-          k=$(curl -fsSL --retry 3 --retry-all-errors "$m/" | grep -o 'cachyos-keyring-[^"]*\.pkg\.tar\.zst' | sort -V | tail -1) || true
-          [ -n "$k" ] || { echo "::error::No cachyos-keyring package in CachyOS's repo listing ($m/)"; exit 1; }
-          curl -fsSL --retry 3 --retry-all-errors -o /tmp/keyring.pkg "$m/$k"
-          mkdir /tmp/k && bsdtar -xf /tmp/keyring.pkg -C /tmp/k
-          pacman-key --add /tmp/k/usr/share/pacman/keyrings/cachyos.gpg
+          # CachyOS's keyring package from the build's own servers for [cachyos] (archiso/pacman.conf), each in turn as
+          # pacman tries them: mirror.cachyos.org alone, down a moment (HTTP 521, 2026-11-19), failed the build here
+          # although mkarchiso would have used the next. Its file named by the repo's database, which every mirror
+          # serves (the folder's listing only CachyOS's own does)
+          d=$(mktemp -d) k=
+          for m in $(pacman-conf --config archiso/pacman.conf --repo cachyos Server); do
+            rm -rf "$d/db" && mkdir "$d/db"
+            if curl -fsSL --retry 3 --retry-all-errors -o "$d/cachyos.db" "$m/cachyos.db" && bsdtar -xf "$d/cachyos.db" -C "$d/db" &&
+              k=$(awk '/^%FILENAME%$/ { getline; print; exit }' "$d"/db/cachyos-keyring-[0-9]*/desc) && [ -n "$k" ] &&
+              curl -fsSL --retry 3 --retry-all-errors -o "$d/keyring.pkg" "$m/$k"; then
+              break
+            fi
+            echo "::warning::CachyOS's keyring couldn't be fetched from $m: the next server"
+            k=
+          done
+          [ -n "$k" ] || { echo "::error::No cachyos-keyring package from CachyOS's servers (archiso/pacman.conf)"; exit 1; }
+          mkdir "$d/k" && bsdtar -xf "$d/keyring.pkg" -C "$d/k"
+          pacman-key --add "$d/k/usr/share/pacman/keyrings/cachyos.gpg"
           pacman-key --lsign-key 882DCFE48E2051D48E2562ABF3B607488DB35A47
       - name: The builder
         if: steps.done.outputs.cache-hit != 'true'
