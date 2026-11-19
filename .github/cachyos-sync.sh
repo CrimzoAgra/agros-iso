@@ -120,7 +120,13 @@ case ${1:-} in
         commit=${2:?usage: cachyos-sync.sh merge <commit>}
         # (only forward: a push of main since, theirs kept, and this merge no longer on top of it)
         if git push -q origin "$commit:refs/heads/main"; then
-            gh workflow run iso.yml --ref main
+            # (tried 3 times, a minute apart: main has moved, and one request GitHub's API dropped left it without its
+            # ISO until something else started one. Still not: the run fails, which the Friday status says)
+            for i in 1 2 3; do
+                gh workflow run iso.yml --ref main && break
+                [[ $i != 3 ]] || { echo "The ISO workflow couldn't be started for $commit" >&2; exit 1; }
+                sleep 60
+            done
             n=$(open_pr)
             [[ -z $n ]] || gh pr close "$n" --comment "Merged by the CachyOS sync, its ISO built first: $commit"
             echo "Merged into main: $commit"

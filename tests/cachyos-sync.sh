@@ -9,11 +9,21 @@ set -euo pipefail
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t GIT_CONFIG_GLOBAL=/dev/null
 unset GITHUB_OUTPUT
 g() { git -c init.defaultBranch=main -c advice.detachedHead=false "$@"; }
-# (gh: its calls written down, a pull request's text too; no pull request open)
+# (gh: its calls written down, a pull request's text too; no pull request open. $t/gh-fails: that many "workflow run"
+# requests fail first. sleep: no wait)
 mkdir "$t/bin"
-printf '#!/bin/sh\necho "$*" >>"%s/gh.log"\nwhile [ $# -gt 0 ]; do [ "$1" != --body-file ] || cat "$2" >>"%s/gh.log"; shift; done\n' \
-    "$t" "$t" >"$t/bin/gh"
-chmod +x "$t/bin/gh"
+cat >"$t/bin/gh" <<'EOF'
+#!/bin/sh
+echo "$*" >>"$T/gh.log"
+call="$1 $2"
+while [ $# -gt 0 ]; do [ "$1" != --body-file ] || cat "$2" >>"$T/gh.log"; shift; done
+n=$(cat "$T/gh-fails" 2>/dev/null || echo 0)
+if [ "$call" = "workflow run" ] && [ "$n" -gt 0 ]; then echo $((n - 1)) >"$T/gh-fails"; exit 1; fi
+exit 0
+EOF
+export T=$t
+printf '#!/bin/sh\nexit 0\n' >"$t/bin/sleep"
+chmod +x "$t/bin/gh" "$t/bin/sleep"
 export PATH=$t/bin:$PATH
 
 # CachyOS's repo, its master one commit ahead of what main has; origin, main at that base; a checkout of it
@@ -47,6 +57,15 @@ sync merge "$theirs"
 ((rc == 0)) || fail "merge failed: $out"
 [[ $(g -C "$t/origin.git" rev-parse main) == "$theirs" ]] || fail "main not moved to the merge"
 grep -q '^workflow run iso.yml' "$t/gh.log" || fail "the ISO not started: $(cat "$t/gh.log")"
+# Its start refused twice by GitHub's API: started the third time. Three times: the run fails, said
+echo 2 >"$t/gh-fails"
+sync merge "$theirs"
+((rc == 0)) && [[ $(grep -c '^workflow run iso.yml' "$t/gh.log") == 3 ]] ||
+    fail "the ISO's start not tried again: rc $rc, $(cat "$t/gh.log")"
+echo 3 >"$t/gh-fails"
+sync merge "$theirs"
+((rc != 0)) && grep -q "couldn't be started" <<<"$out" || fail "the ISO never started, not a failure: rc $rc, $out"
+rm -f "$t/gh-fails"
 
 # Main moved on meanwhile: a pull request, said why, of what "cachyos" has (their master moved on again since: not in it)
 echo more >>"$t/up/f" && g -C "$t/up" commit -qam more
