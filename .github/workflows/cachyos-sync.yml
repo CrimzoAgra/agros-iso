@@ -2,9 +2,10 @@ name: CachyOS sync
 
 # CachyOS's ISO repo, what this one is based on, followed each day (.github/cachyos-sync.sh): their new commits merged
 # into main by themselves when the merge has no conflicts, keeps what AgrOS changed on purpose (none of the packages it
-# left out back, no KDE ones, its own installer), its ISO builds and its tests pass; then the ISO is published as after
-# any push. Else a pull request from the branch "cachyos" (their master as it is) says what they change and why it
-# wasn't merged.
+# left out back, no KDE ones, its own installer), adds no package that starts something by itself and takes none AgrOS
+# relies on off the ISO (.github/cachyos-sync-packages.sh), its ISO builds and its tests pass; then the ISO is published
+# as after any push. Else a pull request from the branch "cachyos" (their master as it is) says what they change and why
+# it wasn't merged: the one thing that waits for a look.
 # (needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests")
 on:
   schedule:
@@ -34,10 +35,50 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: .github/cachyos-sync.sh prepare
 
-  # The merge's ISO built first, nothing published
-  check:
+  # What the merge does to the ISO's packages (.github/cachyos-sync-packages.sh): no new one that starts something by
+  # itself (an autostart entry, a service it enables, a pacman hook), none AgrOS relies on gone. From the package
+  # databases and the new packages' own files, in an Arch container: downloaded and listed, never installed or run.
+  # Main's checkout (the script, its allowlist), not the merge's; a token that only reads
+  packages:
     needs: prepare
     if: needs.prepare.outputs.candidate != ''
+    runs-on: ubuntu-26.04
+    container:
+      image: archlinux:latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    outputs:
+      why: ${{ steps.check.outputs.why }}
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+    steps:
+      # (git for a real checkout, the merge and main's commit before it; pacman set up as the ISO workflow's)
+      - name: Pacman, and git
+        run: |
+          systemd-machine-id-setup >/dev/null
+          mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/36-systemd-modules-load.hook
+          sed -i 's/^#*DownloadUser.*/#DownloadUser = alpm/' /etc/pacman.conf
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git
+      # (every branch: the merge is "cachyos-merge"'s)
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The merge's packages
+        id: check
+        env:
+          CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          .github/cachyos-sync-packages.sh "$CANDIDATE"
+
+  # The merge's ISO built first, nothing published (not when the package check held it: a pull request anyway)
+  check:
+    needs: [prepare, packages]
+    if: needs.prepare.outputs.candidate != '' && needs.packages.outputs.why == ''
     uses: ./.github/workflows/iso.yml
     with:
       ref: ${{ needs.prepare.outputs.candidate }}
@@ -57,7 +98,7 @@ jobs:
   # (after a failed check or tests too, for the pull request; not after the run was cancelled, which always() also ran
   # it after, saying "its ISO wasn't built")
   merge:
-    needs: [prepare, check, tests]
+    needs: [prepare, packages, check, tests]
     if: ${{ !cancelled() && needs.prepare.outputs.candidate != '' }}
     runs-on: ubuntu-26.04
     steps:
@@ -67,13 +108,19 @@ jobs:
       - name: Into main, or a pull request
         env:
           GH_TOKEN: ${{ github.token }}
+          PACKAGES: ${{ needs.packages.result }}
+          HELD: ${{ needs.packages.outputs.why }}
           CHECK: ${{ needs.check.result }}
           BUILT: ${{ needs.check.outputs.built }}
           TESTS: ${{ needs.tests.result }}
           CANDIDATE: ${{ needs.prepare.outputs.candidate }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "$TESTS" != success ]; then
+          if [ -n "$HELD" ]; then
+            .github/cachyos-sync.sh pr "$HELD"
+          elif [ "$PACKAGES" != success ]; then
+            .github/cachyos-sync.sh pr "its packages couldn't be checked ($RUN_URL; tried again tomorrow)"
+          elif [ "$TESTS" != success ]; then
             .github/cachyos-sync.sh pr "its tests fail ($RUN_URL)"
           elif [ "$CHECK" = success ] && [ "$BUILT" = true ]; then
             .github/cachyos-sync.sh merge "$CANDIDATE"

@@ -18,9 +18,10 @@ url=${CACHYOS_URL:-https://github.com/CachyOS/CachyOS-Live-ISO.git}
 out=${GITHUB_OUTPUT:-/dev/stdout}
 list=archiso/packages_desktop.x86_64
 # The only files a change of theirs to merges by itself (prepare's why), as an extended regex on paths: docs, images,
-# and the package list, which has its own checks. Anything else might run as root or decide what's trusted (the live
-# user has sudo with no password, so its files count too), so a look comes first. An allowlist, as a list of the
-# dangerous paths kept missing some
+# and the package list, which has its own checks (below, and the workflow's package check after: what a new package
+# starts by itself, what AgrOS relies on gone, .github/cachyos-sync-packages.sh). Anything else might run as root or
+# decide what's trusted (the live user has sudo with no password, so its files count too), so a look comes first. An
+# allowlist, as a list of the dangerous paths kept missing some
 harmless='^((docs/|manual/)?[^/]+\.md|LICENSE|\.gitignore|.*\.(png|jpe?g)|archiso/packages_desktop\.x86_64)$'
 # (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
 # merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
