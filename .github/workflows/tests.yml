@@ -31,5 +31,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref || github.ref }}
+          # (the pushed commit itself: a branch named here is its tip when this runs)
+          ref: ${{ inputs.ref || github.sha }}
       - run: tests/run.sh

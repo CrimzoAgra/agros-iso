@@ -104,10 +104,12 @@ jobs:
           pacman-key --init
           pacman -Syu --noconfirm --needed git
       # (no token left in .git/config: the build's copy of this folder is readable by every package's install script)
+      # (the run's own commit, as the publish job's checkout: a branch named here is its tip when the step runs, so a run
+      # that waited its turn, or was re-run days later, built a newer commit than its own, published by its own scripts)
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
       - name: What changed
         id: what
         env:
