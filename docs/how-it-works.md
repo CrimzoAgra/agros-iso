@@ -230,10 +230,13 @@ The AgrOS ones in `archiso/airootfs/`:
    ready", or, offline, to connect; no `XDG_RUNTIME_DIR`, no splash, as a fixed name in `/tmp` could be planted or
    watched by another account), closed once the installer's window is up or when it stops: its window takes a minute or
    two. Named after the installer's launcher entry (`QS_APP_ID=agros-install`), the dock shows the AgrOS logo for it,
-   not Quickshell's default icon. It's drawn on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`), set by this script on any machine
-   rather than left to the desktop's VMware fallback: on VMware's GPU without the shim, Hyprland refused a GPU-drawn window, never seen. Waits for the internet (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the
-   first login, it also says "Connect to the internet to install" once in a notification and checks every 2 seconds, for
-   up to 5 minutes; then it goes on either way (the keyring step below fails, with its notification, if still offline).
+   not Quickshell's default icon; its window's size is fixed, which Hyprland floats by itself (Caelestia's float rule
+   is for Quickshell's own class, `org.quickshell`: without it, the splash was tiled over the whole screen). It's drawn
+   on the CPU (`LIBGL_ALWAYS_SOFTWARE=1`), set by this script on any machine rather than left to the desktop's VMware
+   fallback: on VMware's GPU without the shim, Hyprland refused a GPU-drawn window, never seen. Waits for the internet
+   (`nmcli networking connectivity check`: `full`). Not connected, as on Wi-Fi at the first login, it also says
+   "Connect to the internet to install" once in a notification and checks every 2 seconds, for up to 5 minutes; then
+   it goes on either way (the keyring step below fails, with its notification, if still offline).
    Syncs the clock and waits for it (up to 30 seconds), since a keyring "created in the future" breaks the install.
    Waits for the ISO's `pacman-init.service` (the keyring it makes at boot), then makes a new pacman keyring and
    populates the `archlinux`, `cachyos` and `agros` keys, then installs the latest `archlinux-keyring` and

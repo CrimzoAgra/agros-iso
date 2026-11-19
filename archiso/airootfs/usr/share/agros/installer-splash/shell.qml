@@ -15,6 +15,13 @@ ShellRoot {
         title: "AgrOS Installer"
         implicitWidth: 560
         implicitHeight: 340
+        // (a fixed size, which Hyprland floats by itself: named agros-install (QS_APP_ID, for its dock icon), Caelestia's
+        // float rule for Quickshell's windows (class org.quickshell) no longer reaches it, and it was tiled over the
+        // whole screen)
+        minimumSize.width: implicitWidth
+        minimumSize.height: implicitHeight
+        maximumSize.width: implicitWidth
+        maximumSize.height: implicitHeight
         color: "#14131b"
 
         FileView {

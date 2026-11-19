@@ -38,6 +38,13 @@ grep -q 'LIBGL_ALWAYS_SOFTWARE=1 ' "$t/qs.env" || fail "the splash isn't drawn o
 # (named after the installer's launcher entry: the dock shows its icon, not Quickshell's default one)
 grep -q ' QS_APP_ID=agros-install$' "$t/qs.env" && [[ -f $here/archiso/airootfs/usr/share/applications/agros-install.desktop ]] ||
     fail "the splash not named after the installer's launcher entry: $(cat "$t/qs.env")"
+# (and so floated by Hyprland for its fixed size: Caelestia's float rule is for org.quickshell, and without one it was
+# tiled over the whole screen)
+qml=$here/archiso/airootfs/usr/share/agros/installer-splash/shell.qml
+for k in minimumSize.width maximumSize.width minimumSize.height maximumSize.height; do
+    d=${k#*.}
+    grep -qx " *$k: implicit${d^}" "$qml" || fail "the splash's size not fixed ($k), so Hyprland tiles it: $qml"
+done
 [[ $(cat "$t/run/agros-installer-splash") == "Getting the installer ready…" ]] ||
     fail "the splash says: $(cat "$t/run/agros-installer-splash")"
 pid=$(cat "$t/qs.pid")
