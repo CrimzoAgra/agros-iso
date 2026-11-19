@@ -10,7 +10,7 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 script=$here/archiso/airootfs/usr/local/bin/calamares-online.sh
 # (the follower as the script has it: its file's line through the function's end, the file then the test's)
-awk '/^kb_conf=/ { on = 1 } on { print } on && /^}$/ { exit }' "$script" | tr -d '\r' >"$t/follow.sh"
+tr -d '\r' <"$script" | awk '/^kb_conf=/ { on = 1 } on { print } on && /^}$/ { exit }' >"$t/follow.sh"
 grep -q '^follow_keyboard() {$' "$t/follow.sh" || fail "no follow_keyboard in calamares-online.sh"
 mkdir "$t/bin"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"$T/hyprctl.log"\n' >"$t/bin/hyprctl"
