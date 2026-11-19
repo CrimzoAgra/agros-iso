@@ -85,7 +85,7 @@ gate_list(){
 # reads it, comments after a name too); with <dir>, those packages alone downloaded there (not what they need: the ISO
 # has that, and the installer's copy is only the gated set)
 gate_plan(){
-    local conf=$src_dir/archiso/pacman.conf tmp plan names
+    local conf=$src_dir/archiso/pacman.conf tmp plan names why
     # (in the build's own folder for these when there is one, beside its list: a stopped build removes it, stopped())
     if [[ -n ${gate_dir:-} ]]; then
         tmp=$gate_dir/db
@@ -95,11 +95,14 @@ gate_plan(){
         tmp=$(mktemp -d) || die "No temporary folder for the ISO's package lists"
     fi
     # (sudo: in CI the build runs as its user, root only for what needs it; a sync, even into a folder of its own, does)
+    # (pacman's errors said with it: a name the repos don't have (CachyOS dropped it, or [agros] hasn't published it
+    # yet) stopped the build here with no name, its first check of the list, and the CachyOS sync's merge with it)
     if ! sudo pacman -Sy --config "$conf" --dbpath "$tmp" --logfile /dev/null >/dev/null ||
         ! plan=$(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d;s/[[:blank:]]//g' "$src_dir/archiso/packages_desktop.x86_64" |
-            sudo pacman -Sp --noconfirm --config "$conf" --dbpath "$tmp" --print-format '%n %v' - 2>/dev/null); then
+            LC_ALL=C sudo pacman -Sp --noconfirm --config "$conf" --dbpath "$tmp" --print-format '%n %v' - 2>"$tmp/err"); then
+        why=$(sed -n 's/^error: //p' "$tmp/err" 2>/dev/null | paste -sd';' | sed 's/;/; /g')
         sudo rm -rf "$tmp"
-        die "The ISO's packages couldn't be looked up (for the upstream gate)"
+        die "The ISO's packages couldn't be looked up (for the upstream gate)%s" "${why:+: $why}"
     fi
     plan=$(awk 'NR == FNR { gated[$1]; next } $1 in gated' <(printf '%s\n' "$1") <(printf '%s\n' "$plan"))
     if [[ -n ${2:-} && -n $plan ]]; then
