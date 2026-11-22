@@ -26,18 +26,45 @@ harmless='^((docs/|manual/)?[^/]+\.md|LICENSE|\.gitignore|.*\.(png|jpe?g)|archis
 # (merge and pr, hours later in the workflow: the branch "cachyos" prepare pushed, which the pull request shows and the
 # merge was checked against. Their master fetched again could have moved on, the request's text then not its commits,
 # and a failed fetch stopped a merge already checked)
+# (git as the sync, its merge commits' author)
+git_sync=(git -c user.name="AgrOS CachyOS sync" -c user.email="agros-sync@users.noreply.github.com")
+# CachyOS's workflows are never AgrOS's (it runs its own: their build.yml left out on purpose): what's pushed and merged
+# is their master with main's .github/workflows in place of theirs, one commit on top of it. GitHub's token may not
+# push a workflow file, and a branch is checked by its whole tree (new, against main's): their master as it is, its
+# build.yml, was refused every day CachyOS had a new commit. A workflow of theirs, new or changed, never merged either
+mark="AgrOS's workflows on CachyOS's master (the sync: theirs are never pushed nor merged)"
+ours_on() {
+    local idx tree
+    idx=$(mktemp)
+    GIT_INDEX_FILE=$idx git read-tree "$1"
+    GIT_INDEX_FILE=$idx git rm -r -q --cached --ignore-unmatch .github/workflows
+    if git rev-parse -q --verify origin/main:.github/workflows >/dev/null; then
+        GIT_INDEX_FILE=$idx git read-tree --prefix=.github/workflows/ origin/main:.github/workflows
+    fi
+    tree=$(GIT_INDEX_FILE=$idx git write-tree)
+    rm -f "$idx"
+    # (dated as their commit: the same each day for the same master, a pull request waiting not pushed again daily)
+    local when
+    when=$(git log -1 --format=%cI "$1")
+    if [[ $tree == "$(git rev-parse "$1^{tree}")" ]]; then
+        echo "$1"
+    else
+        GIT_AUTHOR_DATE=$when GIT_COMMITTER_DATE=$when "${git_sync[@]}" commit-tree "$tree" -p "$1" -m "$mark"
+    fi
+}
 case ${1:-} in
-    prepare) git fetch -q "$url" master; theirs=$(git rev-parse FETCH_HEAD) ;;
-    merge | pr) theirs=$(git rev-parse origin/cachyos) ;;
+    prepare) git fetch -q "$url" master; upstream=$(git rev-parse FETCH_HEAD); theirs=$(ours_on "$upstream") ;;
+    merge | pr)
+        theirs=$(git rev-parse origin/cachyos) upstream=$theirs
+        [[ $(git log -1 --format=%s "$theirs") != "$mark" ]] || upstream=$(git rev-parse "$theirs^")
+        ;;
     *) echo "usage: cachyos-sync.sh prepare | merge <commit> | pr <why>" >&2; exit 2 ;;
 esac
-new=$(git rev-list --count "origin/main..$theirs")
+new=$(git rev-list --count "origin/main..$upstream")
 # pkgs <commit>: its ISO's package list, one per line
 pkgs() { git show "$1:$list" 2>/dev/null | sed 's/#.*//; s/[[:space:]]//g; /^$/d' | sort -u; }
 # open_pr: the number of the open pull request from "cachyos" into main (none: empty)
 open_pr() { gh pr list --head cachyos --base main --state open --json number -q '.[0].number'; }
-# (git as the sync, its merge commits' author)
-git_sync=(git -c user.name="AgrOS CachyOS sync" -c user.email="agros-sync@users.noreply.github.com")
 
 # pr <why>: the pull request from "cachyos" opened, or brought up to date
 pr() {
@@ -59,11 +86,11 @@ pr() {
             echo
         fi
         echo "**Commits:**"
-        git log --format='- %h %s' "origin/main..$theirs"
+        git log --format='- %h %s' "origin/main..$upstream"
         echo
         echo "**Files:**"
         echo '```'
-        git diff --stat "origin/main...$theirs"
+        git diff --stat "origin/main...$upstream" -- . ':(exclude).github/workflows'
         echo '```'
     } >"$body"
     n=$(open_pr)
@@ -79,10 +106,12 @@ case ${1:-} in
     prepare)
         echo "new=$new" >>"$out"
         if [[ $new == 0 ]]; then echo "Nothing new from CachyOS"; exit 0; fi
-        # (GitHub's token may not push a change to a workflow file: one of CachyOS's to theirs, .github/workflows, stops
-        # the sync here each day until the branch is pushed by hand, said how)
-        git push -q -f origin "$theirs:refs/heads/cachyos" || {
-            echo "::error::The branch cachyos couldn't be pushed (a change of CachyOS's to .github/workflows, which GitHub's token may not push?). By hand: git fetch $url master && git push -f origin FETCH_HEAD:refs/heads/cachyos"
+        # (its workflows main's: ours_on. Still refused, main's own workflows changed since the branch was last pushed
+        # (an update is checked against what it had): made again, then checked against main's. Its open pull request
+        # closes with it; pr opens a new one)
+        git push -q -f origin "$theirs:refs/heads/cachyos" ||
+            { git push -q origin :refs/heads/cachyos && git push -q origin "$theirs:refs/heads/cachyos"; } || {
+            echo "::error::The branch cachyos couldn't be pushed, made again neither: see the push's error above"
             exit 1
         }
         why=

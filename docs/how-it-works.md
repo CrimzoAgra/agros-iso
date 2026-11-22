@@ -408,7 +408,12 @@ So the repo has to be published before you build: the build's pacman reads it, a
 (`.github/workflows/cachyos-sync.yml`, its script `.github/cachyos-sync.sh`) takes in their new commits by itself
 when that's safe:
 
-1. Their `master` is pushed as the branch `cachyos`, and merged into `main` on a branch of its own,
+1. Their `master` is pushed as the branch `cachyos`, with `main`'s `.github/workflows` in place of theirs (a commit of
+   the sync's on top of it): CachyOS's workflows are never AgrOS's, and GitHub's token may not push a workflow file,
+   checking a branch by its whole tree (a new one against `main`'s), so their `master` as it was, with their
+   `build.yml`, was refused every day they had a new commit. A workflow of theirs, new or changed, is never merged
+   either. An update of the branch refused all the same (`main`'s own workflows changed since it was last pushed): the
+   branch made again, its open pull request then opened anew. It's then merged into `main` on a branch of its own,
    `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
    `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes only files known to be harmless

@@ -80,7 +80,7 @@ held() {
 # Any file of theirs but docs, images and the package list: a pull request naming it, whatever else changed. Those
 # that run as root or decide what's trusted, the live user's (it has sudo with no password), the boot menus' (the
 # kernel's command line), scripts anywhere, and one nobody thought of (motd)
-for f in buildiso.sh util-iso.sh .github/workflows/x.yml archiso/profiledef.sh archiso/pacman.conf \
+for f in buildiso.sh util-iso.sh archiso/profiledef.sh archiso/pacman.conf \
     archiso/airootfs/etc/sudoers.d/x archiso/airootfs/etc/polkit-1/rules.d/x.rules archiso/airootfs/etc/pacman.d/hooks/x.hook \
     archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service archiso/airootfs/etc/ssh/sshd_config.d/x.conf \
     archiso/airootfs/etc/shadow archiso/airootfs/root/.zlogin archiso/airootfs/usr/local/bin/x \
@@ -105,6 +105,25 @@ case_ "$agros" '8a newtool' archiso/syslinux/splash.png archiso/airootfs/usr/sha
     manual/x.md docs/images/x.png LICENSE .gitignore 'docs/a.md>docs/b.md'
 grep -q '^candidate=' <<<"$out" || fail "a change to docs and images held: $out"
 
+# A workflow of theirs, new or changed: never pushed nor merged (main's own in its place: GitHub's token may not push a
+# workflow file, and a branch is checked by its whole tree; their master as it is was refused each day). The branch
+# "cachyos" their master with main's workflows on top, its own commit; the merge a candidate without theirs
+case_ "$agros" '8a newtool' .github/workflows/build.yml
+grep -q '^candidate=' <<<"$out" || fail "a workflow of theirs held the merge, or failed it: $out"
+c=$(sed -n 's/^candidate=//p' <<<"$out")
+! g -C "$t/origin.git" cat-file -e "$c:.github/workflows/build.yml" 2>/dev/null || fail "a workflow of theirs merged"
+! g -C "$t/origin.git" cat-file -e cachyos:.github/workflows/build.yml 2>/dev/null || fail "a workflow of theirs pushed"
+[[ $(g -C "$t/origin.git" rev-parse cachyos^) == "$(g -C "$t/up" rev-parse HEAD)" ]] ||
+    fail "the branch cachyos isn't their master with one commit on it"
+grep -qx 'new=1' <<<"$out" || fail "AgrOS's commit on their master counted as one of theirs: $out"
+# ...main's own workflows kept in it (its pull request shows none of them as gone)
+w=$(mktemp -d) && g clone -q "$t/origin.git" "$w" && mkdir -p "$w/.github/workflows" && echo ours >"$w/.github/workflows/iso.yml" &&
+    g -C "$w" add -A && g -C "$w" commit -qm workflows && g -C "$w" push -q origin HEAD:main && rm -rf "$w" "$t/w"
+g clone -q "$t/origin.git" "$t/w"
+out=$(cd "$t/w" && CACHYOS_URL=$t/up bash "$here/.github/cachyos-sync.sh" prepare 2>&1) || fail "prepare with main's workflows failed: $out"
+[[ $(g -C "$t/origin.git" show cachyos:.github/workflows/iso.yml) == ours ]] &&
+    ! g -C "$t/origin.git" cat-file -e cachyos:.github/workflows/build.yml 2>/dev/null ||
+    fail "the branch cachyos hasn't main's workflows in place of theirs"
 # The repo's own list names the installer as the check looks for it
 grep -qx 'agros/calamares' <(sed 's/#.*//; s/[[:space:]]//g' "$here/$list") ||
     fail "the ISO's package list has no agros/calamares, which the sync checks for"

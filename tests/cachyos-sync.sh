@@ -79,4 +79,12 @@ sync merge "$pushed"
 grep -q '^pr create' "$t/gh.log" || fail "main moved on: no pull request ($(cat "$t/gh.log" 2>/dev/null))"
 grep -q '^- [0-9a-f]* more$' "$t/gh.log" && ! grep -q ' later$' "$t/gh.log" && grep -q 'CachyOS: 1 new commit' "$t/gh.log" ||
     fail "the pull request's text not the branch cachyos's commits: $(cat "$t/gh.log")"
+# The branch as prepare pushes it, AgrOS's workflows on their master as a commit of its own: not counted nor listed as one
+# of theirs
+g -C "$t/up" checkout -q "$pushed" && g -C "$t/up" commit -q --allow-empty \
+    -m "AgrOS's workflows on CachyOS's master (the sync: theirs are never pushed nor merged)" &&
+    g -C "$t/up" push -q -f "$t/origin.git" HEAD:refs/heads/cachyos
+sync pr "a look first"
+grep -q 'CachyOS: 1 new commit' "$t/gh.log" && ! grep -q "AgrOS's workflows" "$t/gh.log" ||
+    fail "AgrOS's commit on their master counted or listed as theirs: $(cat "$t/gh.log")"
 echo "ok cachyos-sync"
