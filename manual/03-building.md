@@ -20,8 +20,10 @@ change, and build without it for a release.
 
 Every build first checks that the Hyprland it would include has passed AgrOS's checks (the upstream gate: AgrOS's CI
 approves each new Hyprland once its tests pass with it, usually the same day). If it hasn't yet, the build stops and
-says which. For a test build that can't wait, `sudo AGROS_UNGATED=1 ./buildiso.sh ...` builds it anyway (also with no
-approved list to be had: then its installer has no Hyprland copy). Such an ISO has `-ungated` at the end of its name,
+says which. It stops too while AgrOS's CI's checks aren't passing (the day they last passed on Arch, published beside
+the approved list, more than about a day old): an ISO is built only from a green pipeline. For a test build that can't
+wait, `sudo AGROS_UNGATED=1 ./buildiso.sh ...` builds it anyway (also with no approved list to be had: then its
+installer has no Hyprland copy). Such an ISO has `-ungated` at the end of its name,
 isn't signed, and `upload-iso.sh` refuses to publish it (so `-u` with it stops at once).
 
 ## Options
@@ -142,10 +144,11 @@ with a warning). A push that changes only those other files starts no run at all
 even one back to a state published before (a revert is a new ISO). Only a run started by AgrOS's CI or by hand skips
 an ISO whose files and packages are already published. It also waits, up to 15 minutes, until GitHub Pages' cache
 serves AgrOS's newest package list, the one the build reads (after that it builds with the cached one, with a
-warning). An ISO that isn't signed isn't published. A run while a new Hyprland waits for AgrOS's check ends green with
-nothing built or published, saying so in the run's summary; AgrOS's CI starts it again once it has approved that
-Hyprland. Each run is in the repo's **Actions** tab; **Run workflow** there
-publishes now (*force*: even if nothing changed). GitHub emails you when one fails. A failed upload is tried 3 times
+warning). An ISO that isn't signed isn't published. A run while a new Hyprland waits for AgrOS's check, or while
+AgrOS's CI's checks aren't passing, ends green with nothing built or published, saying so in the run's summary;
+AgrOS's CI starts it again once it has approved that Hyprland, or passes again. The CachyOS sync's merge waits for
+AgrOS's CI first, as a push. Each run is in the repo's **Actions** tab; **Run workflow** there publishes now
+(*force*: even if nothing changed). GitHub emails you when one fails. A failed upload is tried 3 times
 before the run fails (not one refused for its checksum or signature).
 It runs as three jobs. **sourceforge** checks SourceForge's key first, so a revoked one stops the run before the
 build. **iso**, the build, runs thousands of packages' install scripts as root (Arch's, CachyOS's, AUR builds'), so it

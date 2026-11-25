@@ -124,10 +124,10 @@ jobs:
             .github/cachyos-sync.sh pr "its tests fail ($RUN_URL)"
           elif [ "$CHECK" = success ] && [ "$BUILT" = true ]; then
             .github/cachyos-sync.sh merge "$CANDIDATE"
-          # (built false: the ISO job ran and its upstream gate held it. Empty: the ISO job never ran, skipped (a run
-          # not from main), not a wait for AgrOS's check)
+          # (built false: the ISO job ran and its upstream gate held it (a new Hyprland, or AgrOS's CI not passing). Empty:
+          # the ISO job never ran, skipped (a run not from main), not a wait for AgrOS's check)
           elif [ "$CHECK" = success ] && [ "$BUILT" = false ]; then
-            .github/cachyos-sync.sh pr "its ISO waits for AgrOS's check of a new Hyprland (tried again tomorrow)"
+            .github/cachyos-sync.sh pr "its ISO waits for AgrOS's check of a new Hyprland, or for its CI to pass again (tried again tomorrow)"
           else
             .github/cachyos-sync.sh pr "its ISO wasn't built ($RUN_URL)"
           fi

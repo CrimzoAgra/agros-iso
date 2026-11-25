@@ -2,7 +2,8 @@
 # iso.yml's "What changed" key, which "Already published?" looks up (a run agros's CI starts skips an ISO already out):
 # the files on.push.paths lets through and [agros]'s packages. A change to the docs, the tests or another workflow
 # leaves it as it was; one to the profile, a script the build runs or iso.yml itself, or a package (a rebuild under the
-# same version too: its checksum), makes a new one. The step's own commands, read from the workflow, curl stubbed
+# same version too: its checksum), makes a new one. And the CachyOS sync's start (wait) waits for AgrOS's CI, as a push;
+# one by hand doesn't. The step's own commands, read from the workflow, curl stubbed
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -11,9 +12,11 @@ awk '/^      - name: What changed$/ { s = 1 } s && /^        run: \|$/ { on = 1;
 grep -q 'key=iso-published-' "$t/step.sh" || fail "the What changed step's commands not found in iso.yml"
 mkdir -p "$t/bin" "$t/r/.github/workflows" "$t/r/archiso" "$t/r/docs" "$t/r/tests"
 cp "$here/.github/workflows/iso.yml" "$t/r/.github/workflows/"
-# (curl: the database, whatever's asked for, into -o's file)
+# (curl: the database, whatever's asked for, into -o's file; GitHub's API, no -o: no AgrOS CI run, the address written
+# down)
 cat >"$t/bin/curl" <<SH
 #!/bin/bash
+[[ " \$* " == *" -o "* ]] || { echo "\${*: -1}" >>"$t/api"; echo '"total_count": 0'; exit 0; }
 while (((\$#))); do [[ \$1 == -o ]] && { cp "$t/agros.db" "\$2"; shift; }; shift; done
 SH
 chmod +x "$t/bin/curl"
@@ -44,4 +47,10 @@ k3=$(key)
 [[ $k3 != "$k2" ]] || fail "a change to iso.yml kept the key"
 db bbb
 [[ $(key) != "$k3" && $(key) == "${k3%-*}-"* ]] || fail "a rebuilt package kept the key, or changed the files' half"
+# Started by hand (or agros's CI): built at once. The CachyOS sync's merge (its wait input): waits for AgrOS's CI first
+[[ ! -e $t/api ]] || fail "a run started by hand waited for AgrOS's CI: $(cat "$t/api")"
+(cd "$t/r" && PATH=$t/bin:$PATH GITHUB_EVENT_NAME=workflow_dispatch WAIT=true GITHUB_OUTPUT=$t/out bash -eo pipefail "$t/step.sh" >/dev/null) ||
+    fail "the step failed, asked to wait"
+grep -q '^https://api.github.com/repos/CrimzoAgra/agros/actions/workflows/ci.yml/runs?branch=main&status=in_progress' "$t/api" ||
+    fail "asked to wait, AgrOS's CI not looked at: $(cat "$t/api" 2>/dev/null)"
 echo "ok iso-key"

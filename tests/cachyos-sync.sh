@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # .github/cachyos-sync.sh merge, on throwaway repos (CachyOS's, and this one's origin) with gh stubbed: main moved to the
-# merge and the ISO started; main moved on meanwhile, a pull request instead, of the branch "cachyos" as prepare pushed
-# it (their master since moved on, and unreachable, changes nothing); a push refused for anything else (a rule, the
-# network, the token), a failure, not a pull request saying main moved on
+# merge and the ISO started (waiting for AgrOS's CI, as a push); main moved on meanwhile, a pull request instead, of the
+# branch "cachyos" as prepare pushed it (their master since moved on, and unreachable, changes nothing); a push refused
+# for anything else (a rule, the network, the token), a failure, not a pull request saying main moved on
 set -euo pipefail
 # shellcheck source=lib.sh source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -57,6 +57,7 @@ sync merge "$theirs"
 ((rc == 0)) || fail "merge failed: $out"
 [[ $(g -C "$t/origin.git" rev-parse main) == "$theirs" ]] || fail "main not moved to the merge"
 grep -q '^workflow run iso.yml' "$t/gh.log" || fail "the ISO not started: $(cat "$t/gh.log")"
+grep -q '^workflow run iso.yml --ref main -f wait=true$' "$t/gh.log" || fail "the ISO not asked to wait for AgrOS's CI: $(cat "$t/gh.log")"
 # Its start refused twice by GitHub's API: started the third time. Three times: the run fails, said
 echo 2 >"$t/gh-fails"
 sync merge "$theirs"

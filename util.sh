@@ -42,43 +42,68 @@ check_requirements(){
     fi
 }
 
-# The upstream gate (agros's agros-gate.conf, update-gate on AgrOS's machines): the ISO built only with the versions of
-# Hyprland and its libraries AgrOS's CI has approved (its list beside the [agros] repo, whose names are the gated ones),
-# and a copy of those packages kept on it (/opt/agros/gate) for the installer to install, not whatever is newest on
-# the day (agros-gate-install). gate_list: the approved list, fetched past GitHub Pages' cache (approved minutes ago,
-# as a push starts this, it was served the old one); an empty or garbled one (an error page) stops the build rather
-# than letting anything through, and so does one without a good signature by AgrOS's key beside it (agros-approved.sig,
-# agros's CI signs it; verify_agros_sig: agros.asc alone), none or a bad one (a mirror or a network in between that
-# changed it). [agros]'s servers tried in turn, as pacman tries them (GitHub Pages, then its R2 mirror): the first with
-# the list and a good signature beside it
-gate_list(){
-    local servers server list stamp d why=()
-    # (fetched once a build: check_gate's fetch read by the build's later steps, all on the same list; a blip at the end
-    # can't stop a finished build)
-    if [[ -n ${gate_cache:-} && -s $gate_cache ]]; then cat "$gate_cache"; return 0; fi
+# agros_signed <name> <dir>: <name>, from beside the [agros] repo, into <dir>, fetched past GitHub Pages' cache (published
+# minutes ago, as a push starts this, it was served the old one) and taken only with a good signature by AgrOS's key
+# beside it (<name>.sig, agros's CI signs it; verify_agros_sig: agros.asc alone), none or a bad one (a mirror or a
+# network in between that changed it) as if it couldn't be fetched. [agros]'s servers tried in turn, as pacman tries
+# them (GitHub Pages, then its R2 mirror): the first with it and a good signature beside it. Sets its caller's server
+# (that one) and, none, why (each server's)
+agros_signed(){
+    local servers stamp w=()
     mapfile -t servers < <(pacman-conf --config "$src_dir/archiso/pacman.conf" --repo agros Server)
     ((${#servers[@]})) || die "No [agros] server in %s" "$src_dir/archiso/pacman.conf"
     stamp=$(date +%s)
-    d=$(mktemp -d) || die "No temporary folder for the approved list"
     for server in "${servers[@]}"; do
-        if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved" "$server/agros-approved?t=$stamp"; then
-            why+=("couldn't be fetched ($server/agros-approved)")
-        elif ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$d/agros-approved.sig" "$server/agros-approved.sig?t=$stamp" ||
-            ! verify_agros_sig "$d/agros-approved"; then
-            why+=("have no good signature by AgrOS's key ($server/agros-approved.sig)")
+        if ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$2/$1" "$server/$1?t=$stamp"; then
+            w+=("couldn't be fetched ($server/$1)")
+        elif ! curl -fsS --connect-timeout 10 -m 30 --retry 3 --retry-all-errors -o "$2/$1.sig" "$server/$1.sig?t=$stamp" ||
+            ! verify_agros_sig "$2/$1"; then
+            w+=("have no good signature by AgrOS's key ($server/$1.sig)")
         else
-            list=$(cat "$d/agros-approved")
-            break
+            return 0
         fi
-        rm -f "$d/agros-approved" "$d/agros-approved.sig"
+        rm -f "$2/$1" "$2/$1.sig"
     done
+    why=$(printf '%s; ' "${w[@]}" | sed 's/; $//')
+    return 1
+}
+
+# The upstream gate (agros's agros-gate.conf, update-gate on AgrOS's machines): the ISO built only with the versions of
+# Hyprland and its libraries AgrOS's CI has approved (its list beside the [agros] repo, whose names are the gated ones),
+# and a copy of those packages kept on it (/opt/agros/gate) for the installer to install, not whatever is newest on
+# the day (agros-gate-install). gate_list: the approved list (agros_signed); an empty or garbled one (an error page)
+# stops the build rather than letting anything through, and so does none with a good signature
+gate_list(){
+    local server why list d
+    # (fetched once a build: check_gate's fetch read by the build's later steps, all on the same list; a blip at the end
+    # can't stop a finished build)
+    if [[ -n ${gate_cache:-} && -s $gate_cache ]]; then cat "$gate_cache"; return 0; fi
+    d=$(mktemp -d) || die "No temporary folder for the approved list"
+    agros_signed agros-approved "$d" && list=$(cat "$d/agros-approved")
     rm -rf "$d"
-    [[ -n ${list+set} ]] || die "AgrOS's approved upstream versions %s" "$(printf '%s; ' "${why[@]}" | sed 's/; $//')"
+    [[ -n ${list+set} ]] || die "AgrOS's approved upstream versions %s" "$why"
     [[ -n $list ]] && ! grep -qvE '^[a-z0-9@._+-]+ [A-Za-z0-9.:_+~]+$' <<<"$list" ||
         die "AgrOS's approved upstream versions aren't a list of them (%s/agros-approved)" "$server"
     # (kept first: a list that can't be kept stops here, said, not silently after it was printed)
     [[ -z ${gate_cache:-} ]] || printf '%s\n' "$list" >"$gate_cache" || die "The approved list couldn't be kept in %s" "$gate_cache"
     printf '%s\n' "$list"
+}
+# gate_current: an ISO built only from a green pipeline. The day AgrOS's CI last passed its checks on Arch
+# (agros-arch-ok, beside the [agros] repo: today's each run they pass, kept as it was while an Arch update breaks them
+# or AgrOS's own code fails them), fetched as the approved list (agros_signed; none, or not a day, stops the build).
+# More than 28 hours past that day's start (UTC, as CI writes it): a line saying so, a wait as gate_waits' others.
+# (CI runs daily at 03:17 UTC, about 15 minutes: passing, the day is today, or yesterday until about 03:35. 28 hours
+# lets that through, with a run up to 25 minutes late, and an ISO agros's CI starts just after midnight; but not the
+# CachyOS sync's ISO, at 04:41, on a day CI held. A limit of whole days would: 2 built the syncs of a hold's first two)
+gate_current(){
+    local server why d day start
+    d=$(mktemp -d) || die "No temporary folder for AgrOS's CI results"
+    agros_signed agros-arch-ok "$d" && day=$(head -c 100 "$d/agros-arch-ok")
+    rm -rf "$d"
+    [[ -n ${day+set} ]] || die "AgrOS's CI results on Arch %s" "$why"
+    [[ $day =~ ^[0-9]{4}/[0-9]{2}/[0-9]{2}$ ]] && start=$(date -ud "${day//\//-}" +%s 2>/dev/null) ||
+        die "AgrOS's CI results on Arch aren't a day (%s/agros-arch-ok)" "$server"
+    (($(date +%s) - start < 28 * 3600)) || echo "anything (AgrOS's CI last passed its checks on Arch on $day)"
 }
 # gate_plan <list> [dir]: the gated packages the ISO gets ("name version"), its package list resolved with its own
 # pacman.conf as mkarchiso installs it (a gated one the ISO doesn't have isn't looked at; the list read as mkarchiso
@@ -127,13 +152,16 @@ gate_list_or_ungated(){
         gate_list
     fi
 }
-# gate_waits: what the ISO would get unapproved ("name version" lines)
+# gate_waits: what the ISO would get unapproved ("name version" lines), or anything at all while AgrOS's CI's checks
+# aren't current (gate_current)
 gate_waits(){
-    local list plan name ver
+    local list stale plan name ver
     # (each failure said where it happened, in its subshell: a bare die, so buildiso.sh's exit trap adds no "unknown
     # error")
     list=$(gate_list_or_ungated) || die
     [[ -n $list ]] || return 0
+    stale=$(gate_current) || die
+    [[ -z $stale ]] || { echo "$stale"; return 0; }
     # (not read through <(...): a die there only ends that subshell, and nothing checked passed as nothing waiting)
     plan=$(gate_plan "$list") || die
     while read -r name ver; do

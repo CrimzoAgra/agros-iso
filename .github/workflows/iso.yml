@@ -32,6 +32,11 @@ on:
         description: Publish even if nothing changed
         type: boolean
         default: false
+      # (the CachyOS sync's merge: started while AgrOS's CI may be publishing, as a push)
+      wait:
+        description: Wait for AgrOS's CI first, as a push does
+        type: boolean
+        default: false
   # (the CachyOS sync's check, cachyos-sync.yml: <ref>, its merge of CachyOS's changes, built, nothing published)
   workflow_call:
     inputs:
@@ -114,13 +119,15 @@ jobs:
         id: what
         env:
           GH_TOKEN: ${{ github.token }}
+          WAIT: ${{ inputs.wait }}
         run: |
-          # A push here while AgrOS's CI is publishing packages (its runs on main, started, queued or waiting their turn):
-          # waits for them, so this ISO has them; after 90 minutes it builds with what's published. (Started by
-          # agros's CI, or by hand: built at once.) Its CI workflow's runs alone (ci.yml): agros's other workflows
+          # A push here while AgrOS's CI is publishing packages (its runs on main, started, queued or waiting their turn),
+          # or the CachyOS sync's merge (its wait input; it raced a Pages deploy): waits for them, so this ISO has them;
+          # after 90 minutes it builds with what's published. (Started by agros's CI, or by hand: built at once.) Its
+          # CI workflow's runs alone (ci.yml): agros's other workflows
           # (the R2 mirror after each CI run, the weekly status, the keepalive) publish no packages, and counted, a push
           # waited for them too
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
+          if [ "$GITHUB_EVENT_NAME" = push ] || [ "$WAIT" = true ]; then
             for i in $(seq 90); do
               busy=0
               for status in in_progress queued requested pending waiting; do
@@ -218,9 +225,10 @@ jobs:
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/builder
           cp -a . /home/builder/agros-iso && chown -R builder: /home/builder/agros-iso
-      # The upstream gate (util.sh's gate_waits): a Hyprland AgrOS's CI hasn't approved yet isn't built in. A wait, not an
-      # error: this run ends here, said, with nothing built or published (no failure email); agros's next CI run approves
-      # it and starts this again. A list that can't be fetched or read is an error, as in the build
+      # The upstream gate (util.sh's gate_waits): a Hyprland AgrOS's CI hasn't approved yet isn't built in, nor anything
+      # while its checks aren't current (gate_current: not passed on Arch for over a day). A wait, not an error: this run
+      # ends here, said, with nothing built or published (no failure email); agros's next CI run that passes starts this
+      # again. A list (or the day) that can't be fetched or read is an error, as in the build
       - name: Upstream gate
         id: gate
         if: steps.done.outputs.cache-hit != 'true'

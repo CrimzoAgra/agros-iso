@@ -149,10 +149,11 @@ case ${1:-} in
         commit=${2:?usage: cachyos-sync.sh merge <commit>}
         # (only forward: a push of main since, theirs kept, and this merge no longer on top of it)
         if git push -q origin "$commit:refs/heads/main"; then
+            # (wait=true: it waits for AgrOS's CI, as a push does, not racing a deploy of its packages)
             # (tried 3 times, a minute apart: main has moved, and one request GitHub's API dropped left it without its
             # ISO until something else started one. Still not: the run fails, which the Friday status says)
             for i in 1 2 3; do
-                gh workflow run iso.yml --ref main && break
+                gh workflow run iso.yml --ref main -f wait=true && break
                 [[ $i != 3 ]] || { echo "The ISO workflow couldn't be started for $commit" >&2; exit 1; }
                 sleep 60
             done
