@@ -78,12 +78,12 @@ The AgrOS ones in `archiso/airootfs/`:
    key beside it (`agros-approved.sig`, agros's CI signs it; `verify_agros_sig`, against `agros.asc` alone): none, or a
    bad one, from every server, stops the build as a list it can't fetch does
    (a file the later steps read, in a folder of its own; with `AGROS_UNGATED`, none found is remembered too). Nor is
-   anything built while AgrOS's CI's checks aren't current (`gate_current`: an image only from a green pipeline): the
-   day they last passed on Arch (`agros-arch-ok`, beside the list, fetched and signature-checked as it is) over 28
-   hours past its start (UTC) is a wait too, exit code 75, whatever the ISO's Hyprland. CI runs daily at 03:17 UTC,
-   about 15 minutes, so passing it's today's, or yesterday's until then; 28 hours lets a late run through, but not the
-   CachyOS sync's ISO (04:41) on a day CI held for an Arch update (whole days would: 2 let a hold's first two through).
-   None, or not a day, stops the build as the list does. Those packages are also downloaded into the live system's files
+   anything built while AgrOS's CI's checks aren't current (`gate_current`: an image only from a green pipeline): when
+   they last passed, to the second (`agros-pass-time`, Unix time, beside the list, fetched and signature-checked as it
+   is), over 26 hours ago is a wait too, exit code 75, whatever the ISO's Hyprland. GitHub starts the nightly run
+   (03:17 UTC) 8 to 10 hours late, and a rule by the day waited every morning's ISO for it. Not published yet (or
+   empty): the day they last passed on Arch (`agros-arch-ok`) over 28 hours past its start (UTC) is the wait. None, or
+   not a day, stops the build as the list does. Those packages are also downloaded into the live system's files
    (`/opt/agros/gate`, `gate_fetch`, as the profile is set up: step 3; those packages alone, not what they need) for the
    installer, and checked once the ISO is made, before it takes its name (`gate_verify`, on mkarchiso's own tree, what
    went into the ISO): only gated packages, every gated one the ISO has, at its own versions (a mirror updated

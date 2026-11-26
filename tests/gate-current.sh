@@ -29,6 +29,8 @@ out=/dev/stdout
 while (($#)); do [[ $1 == -o ]] && out=$2; shift; done
 case ${url##*/} in
     agros-arch-ok*) body=$DAY ;;
+    # ($AT: agros-pass-time's Unix time; unset: not published yet, a 404)
+    agros-pass-time*) [[ -n ${AT+set} ]] || exit 22; body=$AT ;;
     agros-approved*) body='hyprland 0.58.0' ;;
     *) exit 22 ;;
 esac
@@ -71,4 +73,16 @@ out=$( (SERVERS=https://down.invalid/x86_64 gate_current) 2>&1) && fail "no serv
 DAY='<html>'
 out=$( (gate_current) 2>&1) && fail "a page that isn't a day taken: $out"
 [[ $out == *"aren't a day (https://agros.invalid/x86_64/agros-arch-ok)"* ]] || fail "a page that isn't a day not said: $out"
+# When CI last passed, to the second (agros-pass-time): within 26 hours the build goes on, yesterday's day or not (the
+# nightly run started late); past that, a wait saying when; empty (none yet): the day's rule
+export AT
+DAY=$(date -ud '-29 hours' +%Y/%m/%d) AT=$(($(date +%s) - 20 * 3600))
+out=$( (gate_current) 2>&1) && [[ -z $out ]] || fail "a pass 20 hours ago a wait: $out"
+AT=$(($(date +%s) - 27 * 3600))
+out=$( (gate_current) 2>&1) || fail "a pass 27 hours ago stopped the build, not a wait: $out"
+[[ $out == "anything (AgrOS's CI last passed its checks on Arch at $(date -ud "@$AT" '+%Y/%m/%d %H:%M') UTC)" ]] ||
+    fail "a pass 27 hours ago not said as a wait: $out"
+AT=''
+out=$( (gate_current) 2>&1) && [[ $out == "anything (AgrOS's CI last passed its checks on Arch on $DAY)" ]] ||
+    fail "an empty pass time not left to the day's rule: $out"
 echo "ok gate-current"

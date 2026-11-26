@@ -95,9 +95,18 @@ gate_list(){
 # (CI runs daily at 03:17 UTC, about 15 minutes: passing, the day is today, or yesterday until about 03:35. 28 hours
 # lets that through, with a run up to 25 minutes late, and an ISO agros's CI starts just after midnight; but not the
 # CachyOS sync's ISO, at 04:41, on a day CI held. A limit of whole days would: 2 built the syncs of a hold's first two)
+# Since agros publishes when they last passed to the second (agros-pass-time, Unix time, signed as the day): more than
+# 26 hours past that is the wait, whenever GitHub starts the nightly run (8 to 10 hours late, November 2026: every ISO
+# waited for it until midday). None published yet, or empty: the day's rule above
 gate_current(){
-    local server why d day start
+    local server why d day start at=
     d=$(mktemp -d) || die "No temporary folder for AgrOS's CI results"
+    agros_signed agros-pass-time "$d" && at=$(head -c 20 "$d/agros-pass-time")
+    if [[ $at =~ ^[0-9]+$ ]]; then
+        rm -rf "$d"
+        (($(date +%s) - at < 26 * 3600)) || echo "anything (AgrOS's CI last passed its checks on Arch at $(date -ud "@$at" '+%Y/%m/%d %H:%M') UTC)"
+        return 0
+    fi
     agros_signed agros-arch-ok "$d" && day=$(head -c 100 "$d/agros-arch-ok")
     rm -rf "$d"
     [[ -n ${day+set} ]] || die "AgrOS's CI results on Arch %s" "$why"
