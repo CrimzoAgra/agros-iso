@@ -10,7 +10,12 @@ export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER
 unset GITHUB_OUTPUT
 g() { git -c init.defaultBranch=main -c advice.detachedHead=false "$@"; }
 mkdir "$t/bin"
-printf '#!/bin/sh\necho "$*" >>"%s/gh.log"\n' "$t" >"$t/bin/gh"
+# (gh: its arguments logged, and a pull request's text kept in $t/body)
+cat >"$t/bin/gh" <<SH
+#!/bin/sh
+echo "\$*" >>"$t/gh.log"
+while [ \$# -gt 0 ]; do [ "\$1" != --body-file ] || cat "\$2" >"$t/body"; shift; done
+SH
 chmod +x "$t/bin/gh"
 export PATH=$t/bin:$PATH
 list=archiso/packages_desktop.x86_64
@@ -70,6 +75,14 @@ grep -qx "why=it would add KDE packages: plasma-workspace" <<<"$out" || fail "a 
 case_ '/^konsole$/d; /^cachyos-calamares-staging$/d; $a hyprland' '8a newtool'
 grep -qx "why=AgrOS's own installer (agros/calamares) would leave the package list" <<<"$out" ||
     fail "the installer gone not said: $out"
+
+# A conflict with AgrOS's changes: a pull request naming the file, and saying to merge by hand the branch "cachyos"
+# (their master with AgrOS's workflows), never their master itself, whose workflows would come in with it
+case_ "$agros"$'\ns/^pkg3$/pkgA/' 's/^pkg3$/pkgB/'
+grep -qx "why=it conflicts with AgrOS's changes" <<<"$out" || fail "a conflict not said: $out"
+grep -qx -- '- `archiso/packages_desktop.x86_64`' "$t/body" || fail "the conflicting file not in the pull request: $(cat "$t/body")"
+grep -qF '`git fetch origin cachyos && git merge origin/cachyos`' "$t/body" && ! grep -q 'FETCH_HEAD\|master' "$t/body" ||
+    fail "the pull request doesn't say to merge the branch cachyos by hand, or names their master: $(cat "$t/body")"
 
 # held <file> <why's files>: held for a look, a pull request naming those files
 held() {

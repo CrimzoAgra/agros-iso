@@ -80,8 +80,9 @@ pr() {
         echo "CachyOS's ISO repo has $new commit(s) AgrOS doesn't have yet. **Not merged by itself:** $why."
         echo
         if [[ -n $conflicts ]]; then
+            # (the branch "cachyos", theirs with main's workflows: their own master merged by hand would bring theirs in)
             echo "**Conflicts with AgrOS's changes**, to resolve by hand"
-            echo "(\`git fetch $url master && git merge FETCH_HEAD\`):"
+            echo "(\`git fetch origin cachyos && git merge origin/cachyos\`: this branch, AgrOS's workflows in place of theirs):"
             sed 's/.*/- `&`/' <<<"$conflicts"
             echo
         fi

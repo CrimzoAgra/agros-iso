@@ -451,10 +451,11 @@ when that's safe:
    wasn't merged by itself. GitHub notifies of it, and agros's Friday status says it's open and since when: the only
    part that waits for a person.
    Each day's run tries again (a check that couldn't tell, a mirror down, passes the next day and merges, closing it).
-   Merged on GitHub when it has no conflicts; otherwise by hand:
+   Merged on GitHub when it has no conflicts; otherwise by hand, the branch `cachyos` (as the pull request says), not
+   their `master` itself, whose workflows would come in with it:
 
 ```bash
-git pull upstream master
+git fetch origin cachyos && git merge origin/cachyos
 ```
 
 The workflow needs the repo's Settings > Actions > General > "Allow GitHub Actions to create and approve pull
