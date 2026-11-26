@@ -107,14 +107,17 @@ case ${1:-} in
     prepare)
         echo "new=$new" >>"$out"
         if [[ $new == 0 ]]; then echo "Nothing new from CachyOS"; exit 0; fi
-        # (its workflows main's: ours_on. Still refused, main's own workflows changed since the branch was last pushed
-        # (an update is checked against what it had): made again, then checked against main's. Its open pull request
-        # closes with it; pr opens a new one)
-        git push -q -f origin "$theirs:refs/heads/cachyos" ||
-            { git push -q origin :refs/heads/cachyos && git push -q origin "$theirs:refs/heads/cachyos"; } || {
-            echo "::error::The branch cachyos couldn't be pushed, made again neither: see the push's error above"
-            exit 1
+        # push_branch <commit> <branch>: its workflows main's (ours_on, and the merge of it). Still refused, main's own
+        # workflows changed since the branch was last pushed (an update is checked against what it had): made again,
+        # then checked against main's. An open pull request of "cachyos" closes with it; pr opens a new one
+        push_branch() {
+            git push -q -f origin "$1:refs/heads/$2" ||
+                { git push -q origin ":refs/heads/$2" && git push -q origin "$1:refs/heads/$2"; } || {
+                echo "::error::The branch $2 couldn't be pushed, made again neither: see the push's error above"
+                exit 1
+            }
         }
+        push_branch "$theirs" cachyos
         why=
         if ! git merge-tree --write-tree --no-messages origin/main "$theirs" >/dev/null; then
             why="it conflicts with AgrOS's changes"
@@ -142,7 +145,7 @@ case ${1:-} in
             echo "why=$why" >>"$out"
             pr "$why"
         else
-            git push -q -f origin HEAD:refs/heads/cachyos-merge
+            push_branch "$(git rev-parse HEAD)" cachyos-merge
             echo "candidate=$(git rev-parse HEAD)" >>"$out"
         fi
         ;;

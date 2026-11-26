@@ -137,6 +137,30 @@ out=$(cd "$t/w" && CACHYOS_URL=$t/up bash "$here/.github/cachyos-sync.sh" prepar
 [[ $(g -C "$t/origin.git" show cachyos:.github/workflows/iso.yml) == ours ]] &&
     ! g -C "$t/origin.git" cat-file -e cachyos:.github/workflows/build.yml 2>/dev/null ||
     fail "the branch cachyos hasn't main's workflows in place of theirs"
+# The candidate's branch, "cachyos-merge", pushed again after main's workflows changed: GitHub's token may not push a
+# change to a workflow (an update of a branch checked against what it had, a new one against main's), so the branch is
+# made again, as "cachyos" is. Its update refused failed the whole sync each day, until it was deleted by hand
+cat >"$t/origin.git/hooks/pre-receive" <<'H'
+#!/bin/bash
+z=0000000000000000000000000000000000000000
+wf() { git rev-parse -q --verify "$1:.github/workflows" || echo none; }
+while read -r old new ref; do
+    [[ $ref != refs/heads/main && $new != "$z" ]] || continue
+    [[ $old != "$z" ]] || old=refs/heads/main
+    [[ $(wf "$old") == "$(wf "$new")" ]] || { echo "refusing to allow a GitHub App to create or update a workflow ($ref)" >&2; exit 1; }
+done
+H
+chmod +x "$t/origin.git/hooks/pre-receive"
+g -C "$t/origin.git" rev-parse -q --verify cachyos-merge >/dev/null || fail "no cachyos-merge pushed before"
+w=$(mktemp -d) && g clone -q "$t/origin.git" "$w" && echo ours2 >"$w/.github/workflows/iso.yml" &&
+    g -C "$w" commit -qam workflows2 && g -C "$w" push -q origin HEAD:main && rm -rf "$w" "$t/w"
+echo y >"$t/up/README3.md" && g -C "$t/up" add -A && g -C "$t/up" commit -qm theirs2
+g clone -q "$t/origin.git" "$t/w"
+out=$(cd "$t/w" && CACHYOS_URL=$t/up bash "$here/.github/cachyos-sync.sh" prepare 2>&1) ||
+    fail "prepare failed, main's workflows changed since cachyos-merge was pushed: $out"
+c=$(sed -n 's/^candidate=//p' <<<"$out")
+[[ -n $c && $(g -C "$t/origin.git" rev-parse cachyos-merge) == "$c" ]] || fail "cachyos-merge isn't the new candidate: $out"
+[[ $(g -C "$t/origin.git" show cachyos-merge:.github/workflows/iso.yml) == ours2 ]] || fail "cachyos-merge without main's workflows"
 # The repo's own list names the installer as the check looks for it
 grep -qx 'agros/calamares' <(sed 's/#.*//; s/[[:space:]]//g' "$here/$list") ||
     fail "the ISO's package list has no agros/calamares, which the sync checks for"

@@ -419,7 +419,8 @@ when that's safe:
    `build.yml`, was refused every day they had a new commit. A workflow of theirs, new or changed, is never merged
    either. An update of the branch refused all the same (`main`'s own workflows changed since it was last pushed): the
    branch made again, its open pull request then opened anew. It's then merged into `main` on a branch of its own,
-   `cachyos-merge`, if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
+   `cachyos-merge` (made again the same way: kept from an earlier merge, its update was refused, and the sync failed
+   each day), if it has no conflicts and keeps what AgrOS changed on purpose: none of the packages AgrOS left out
    of their list comes back (in it at the last merge, not in AgrOS's), no KDE package is added (`plasma*`, `kde*`,
    `kf6*`, `breeze*`), AgrOS's own installer (`agros/calamares`) stays, and it changes only files known to be harmless
    (`harmless` in the script: the docs, `*.md` at the top and in `docs/` and `manual/`, `LICENSE`, `.gitignore`,
