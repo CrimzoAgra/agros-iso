@@ -20,6 +20,9 @@ cat >"$t/bin/curl" <<SH
 while (((\$#))); do [[ \$1 == -o ]] && { cp "$t/agros.db" "\$2"; shift; }; shift; done
 SH
 chmod +x "$t/bin/curl"
+# (bsdtar, as the Arch container has it; plain tar reads the test's database the same way where it isn't installed)
+command -v bsdtar >/dev/null || printf '#!/bin/sh\nexec tar "$@"\n' >"$t/bin/bsdtar"
+chmod +x "$t/bin/"*
 # db <sum>: a database with one package of that checksum
 db() { rm -rf "$t/d" && mkdir -p "$t/d/x-1-1" && printf '%%SHA256SUM%%\n%s\n' "$1" >"$t/d/x-1-1/desc" && tar -czf "$t/agros.db" -C "$t/d" x-1-1; }
 git_() { git -C "$t/r" -c user.name=t -c user.email=t@t "$@"; }
